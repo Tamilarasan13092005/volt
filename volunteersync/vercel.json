@@ -1,0 +1,7 @@
+{
+  "buildCommand": "flutter build web",
+  "outputDirectory": "build/web",
+  "env": {
+    "FLUTTER_WEB_CANVASKIT_URL": "./"
+  }
+}
