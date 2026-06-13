@@ -1,0 +1,16 @@
+{
+  "name": "volunteersync-appium-tests",
+  "version": "1.0.0",
+  "description": "Appium E2E test suite for VolunteerSync Android application with Excel reporting",
+  "main": "e2e_test.js",
+  "scripts": {
+    "test:real": "node e2e_test.js",
+    "test:simulate": "node run_simulator.js"
+  },
+  "dependencies": {
+    "webdriverio": "^8.39.0",
+    "exceljs": "^4.4.0"
+  },
+  "author": "VolunteerSync Team",
+  "license": "MIT"
+}
