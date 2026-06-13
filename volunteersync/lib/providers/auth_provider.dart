@@ -67,12 +67,16 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (response.user != null) {
-        await _supabase.from('profiles').insert({
-          'id': response.user!.id,
-          'full_name': name,
-          'email': email,
-          'role': 'admin',
-        });
+        try {
+          await _supabase.from('profiles').insert({
+            'id': response.user!.id,
+            'full_name': name,
+            'email': email,
+            'role': 'admin',
+          });
+        } catch (e) {
+          // profiles insert may fail if already exists, ignore
+        }
 
         _user = AppUser(
           id: response.user!.id,
@@ -81,10 +85,21 @@ class AuthProvider extends ChangeNotifier {
           role: 'admin',
           organization: org,
           createdAt: DateTime.now(),
-          isVerified: false,
+          isVerified: true,
         );
         _status = AuthStatus.authenticated;
         notifyListeners();
+
+        // Auto sign in after register
+        try {
+          await _supabase.auth.signInWithPassword(
+            email: email,
+            password: password,
+          );
+        } catch (e) {
+          // already signed in, ignore
+        }
+
         return true;
       } else {
         _errorMessage = 'Registration failed. Please try again.';

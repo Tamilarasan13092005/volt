@@ -16,8 +16,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailCtrl = TextEditingController(text: 'test@volunteersync.com');
-  final _passCtrl = TextEditingController(text: 'test123456');
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscure = true;
 
@@ -326,54 +326,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),
 
                   const SizedBox(height: 24),
-
-                  // Demo credentials card
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.2)),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.info_outline_rounded,
-                              color: AppColors.primary, size: 16),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Demo credentials',
-                                  style: TextStyle(
-                                    color: AppColors.primaryLight,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  )),
-                              SizedBox(height: 2),
-                              Text(
-                                'test@volunteersync.com · test123456',
-                                style: TextStyle(
-                                    color: AppColors.textMuted, fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ).animate().fadeIn(delay: 600.ms),
-
-                  const SizedBox(height: 28),
 
                   // Sign up link
                   Center(

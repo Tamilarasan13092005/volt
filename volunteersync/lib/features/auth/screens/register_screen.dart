@@ -45,7 +45,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final auth = context.read<AuthProvider>();
     final ok = await auth.register(_nameCtrl.text.trim(),
         _emailCtrl.text.trim(), _passCtrl.text, _orgCtrl.text.trim());
-    if (mounted && ok) context.go(AppRouter.dashboard);
+    if (mounted && ok) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (mounted) context.go(AppRouter.dashboard);
+    } else if (mounted && !ok) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(auth.errorMessage ?? 'Registration failed'),
+        backgroundColor: AppColors.accent4,
+      ));
+    }
   }
 
   @override

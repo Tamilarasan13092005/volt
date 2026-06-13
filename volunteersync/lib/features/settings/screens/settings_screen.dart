@@ -23,6 +23,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _twoFA = false;
   String _language = 'English';
   String _timezone = 'Pacific Time (PT)';
+  bool _changingPassword = false;
+
+  Future<void> _changePassword() async {
+    final auth = context.read<AuthProvider>();
+    final email = auth.user?.email ?? '';
+    if (email.isEmpty) return;
+
+    setState(() => _changingPassword = true);
+    try {
+      final ok = await auth.forgotPassword(email);
+      if (mounted) {
+        AppUtils.showSnackBar(
+          context,
+          ok
+              ? 'Password reset email sent to $email!'
+              : 'Failed to send reset email.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _changingPassword = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Profile',
+                  const Text('PROFILE',
                       style: TextStyle(
                         color: AppColors.textMuted,
                         fontSize: 11,
@@ -86,12 +108,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color:
-                                    AppColors.primary.withValues(alpha: 0.15),
+                                color: AppColors.primary.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
-                                user?.role.toUpperCase() ?? '',
+                                (user?.role ?? 'user').toUpperCase(),
                                 style: const TextStyle(
                                   color: AppColors.primaryLight,
                                   fontSize: 10,
@@ -103,28 +124,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ],
                         ),
                       ),
-                      OutlinedButton(
-                        onPressed: () => AppUtils.showSnackBar(
-                            context, 'Profile editing coming soon!'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primary,
-                          side: const BorderSide(color: AppColors.primary),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                        ),
-                        child:
-                            const Text('Edit', style: TextStyle(fontSize: 13)),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   const Divider(color: AppColors.border, height: 1),
                   const SizedBox(height: 12),
-                  _InfoRow('Organization', user?.organization ?? ''),
-                  _InfoRow('Member since',
-                      AppUtils.formatDate(user?.createdAt ?? DateTime.now())),
+                  _InfoRow('Email', user?.email ?? ''),
+                  _InfoRow('Role', user?.role ?? 'admin'),
+                  _InfoRow(
+                      'Organization', user?.organization ?? 'VolunteerSync'),
                 ],
               ),
             ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
@@ -183,15 +191,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 _ActionTile(
                   icon: Icons.lock_reset_rounded,
-                  label: 'Change password',
-                  onTap: () => AppUtils.showSnackBar(
-                      context, 'Password reset email sent!'),
-                ),
-                _ActionTile(
-                  icon: Icons.devices_rounded,
-                  label: 'Active sessions',
-                  trailing: '2 devices',
-                  onTap: () {},
+                  label: _changingPassword
+                      ? 'Sending reset email...'
+                      : 'Change password',
+                  onTap: _changingPassword ? () {} : _changePassword,
                 ),
               ],
             ),
@@ -235,23 +238,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _ActionTile(
                   icon: Icons.info_outline_rounded,
                   label: 'App version',
-                  trailing: '1.0.0 (build 1)',
+                  trailing: '1.0.0',
                   onTap: () {},
                 ),
                 _ActionTile(
                   icon: Icons.description_outlined,
                   label: 'Terms of Service',
-                  onTap: () {},
+                  onTap: () => AppUtils.showSnackBar(context, 'Coming soon!'),
                 ),
                 _ActionTile(
                   icon: Icons.privacy_tip_outlined,
                   label: 'Privacy Policy',
-                  onTap: () {},
+                  onTap: () => AppUtils.showSnackBar(context, 'Coming soon!'),
                 ),
                 _ActionTile(
                   icon: Icons.help_outline_rounded,
                   label: 'Help & Support',
-                  onTap: () {},
+                  onTap: () => AppUtils.showSnackBar(
+                      context, 'Contact: support@volunteersync.io'),
                 ),
               ],
             ),
@@ -262,16 +266,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () {
-                  context.read<AuthProvider>().signOut();
-                  context.go(AppRouter.login);
+                onPressed: () async {
+                  await context.read<AuthProvider>().signOut();
+                  if (context.mounted) context.go(AppRouter.login);
                 },
                 icon: const Icon(Icons.logout_rounded, size: 18),
                 label: const Text('Sign Out'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.accent4,
-                  side: BorderSide(
-                      color: AppColors.accent4.withValues(alpha: 0.4)),
+                  side: BorderSide(color: AppColors.accent4.withOpacity(0.4)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
@@ -306,9 +309,11 @@ class _InfoRow extends StatelessWidget {
         children: [
           Text('$label: ',
               style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
-          Text(value,
-              style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 13)),
+          Expanded(
+            child: Text(value,
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 13)),
+          ),
         ],
       ),
     );
@@ -401,8 +406,7 @@ class _SwitchTile extends StatelessWidget {
         Switch(
           value: value,
           onChanged: onChanged,
-          activeThumbColor: AppColors.primary,
-          trackOutlineColor: WidgetStateProperty.all(AppColors.border),
+          activeColor: AppColors.primary,
         ),
       ],
     );
