@@ -9,9 +9,11 @@ import 'providers/volunteers_provider.dart';
 import 'providers/events_provider.dart';
 import 'providers/chat_provider.dart';
 import 'routes/app_router.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  usePathUrlStrategy();
 
   await Supabase.initialize(
     url: 'https://mspciorhvkjxsfllnvwn.supabase.co',

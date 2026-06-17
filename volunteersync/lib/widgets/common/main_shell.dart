@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/app_utils.dart';
@@ -158,7 +157,7 @@ class _Sidebar extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 18,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                  backgroundColor: AppColors.primary.withOpacity( 0.2),
                   child: Text(
                     AppUtils.initials(auth.user?.name ?? 'U'),
                     style: const TextStyle(
@@ -264,14 +263,14 @@ class _SidebarItem extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               color: isActive
                   ? (item.isPrimary
-                      ? AppColors.primary.withValues(alpha: 0.15)
-                      : AppColors.primary.withValues(alpha: 0.12))
+                      ? AppColors.primary.withOpacity( 0.15)
+                      : AppColors.primary.withOpacity( 0.12))
                   : Colors.transparent,
               gradient: isActive && item.isPrimary
                   ? LinearGradient(
                       colors: [
-                        AppColors.primary.withValues(alpha: 0.2),
-                        AppColors.secondary.withValues(alpha: 0.15)
+                        AppColors.primary.withOpacity( 0.2),
+                        AppColors.secondary.withOpacity( 0.15)
                       ],
                     )
                   : null,
@@ -367,7 +366,7 @@ class _MobileShell extends StatelessWidget {
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: isActive
-                          ? AppColors.primary.withValues(alpha: 0.15)
+                          ? AppColors.primary.withOpacity( 0.15)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(12),
                     ),

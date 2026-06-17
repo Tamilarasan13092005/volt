@@ -73,7 +73,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(colors: [
-                  AppColors.secondary.withValues(alpha: 0.1),
+                  AppColors.secondary.withOpacity( 0.1),
                   Colors.transparent,
                 ]),
               ),
@@ -133,6 +133,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Column(
                       children: [
                         TextFormField(
+                          key: const Key('register_name_field'),
                           controller: _nameCtrl,
                           style: const TextStyle(color: AppColors.textPrimary),
                           decoration: const InputDecoration(
@@ -148,6 +149,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 14),
 
                         TextFormField(
+                          key: const Key('register_org_field'),
                           controller: _orgCtrl,
                           style: const TextStyle(color: AppColors.textPrimary),
                           decoration: const InputDecoration(
@@ -163,6 +165,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 14),
 
                         TextFormField(
+                          key: const Key('register_email_field'),
                           controller: _emailCtrl,
                           keyboardType: TextInputType.emailAddress,
                           style: const TextStyle(color: AppColors.textPrimary),
@@ -179,6 +182,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 14),
 
                         TextFormField(
+                          key: const Key('register_password_field'),
                           controller: _passCtrl,
                           obscureText: _obscure,
                           style: const TextStyle(color: AppColors.textPrimary),
@@ -246,6 +250,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 24),
 
                         GradientButton(
+                          key: const Key('register_submit_button'),
                           label: 'Create Account',
                           onPressed: _submit,
                           isLoading: auth.status == AuthStatus.loading,
