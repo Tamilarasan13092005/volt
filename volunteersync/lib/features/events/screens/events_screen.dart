@@ -202,7 +202,7 @@ class _AddEventDialogState extends State<_AddEventDialog> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                initialValue: _category,
+                value: _category,
                 dropdownColor: AppColors.surface,
                 style: const TextStyle(color: AppColors.textPrimary),
                 decoration: const InputDecoration(labelText: 'Category'),
