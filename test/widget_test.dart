@@ -1,30 +1,26 @@
-// This is a basic Flutter widget test.
+// test/widget_test.dart
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Main test entry point — runs all widget and unit tests.
+// This file is kept for Flutter's default test discovery.
+//
+// HOW TO RUN ALL TESTS:
+//   flutter test
+//
+// HOW TO RUN SPECIFIC TEST FILES:
+//   flutter test test/unit/auth_provider_test.dart
+//   flutter test test/widget/login_widget_test.dart
+//   flutter test test/widget/register_widget_test.dart
+//
+// HOW TO RUN INTEGRATION TESTS (requires a device/emulator):
+//   flutter test integration_test/app_test.dart
 
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-
-import 'package:volunteersync/main.dart';
+// This file intentionally left minimal.
+// All tests are organized in:
+//   test/unit/          — unit tests (no UI)
+//   test/widget/        — widget tests (render UI, no real device)
+//   integration_test/   — integration tests (real device or emulator)
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const VolunteerSyncApp());
-
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
-  });
+  // Tests are in subdirectories — run them individually or with:
+  // flutter test test/unit/ test/widget/
 }

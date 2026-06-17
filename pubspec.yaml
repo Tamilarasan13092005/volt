@@ -42,6 +42,13 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^3.0.0
 
+  # Integration testing — Flutter's official test driver
+  integration_test:
+    sdk: flutter
+
+  # Mocking library — create fake versions of classes in tests
+  mocktail: ^1.0.4
+
 flutter:
   uses-material-design: true
 

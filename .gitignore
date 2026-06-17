@@ -1,4 +1,4 @@
-# Miscellaneous
+# ─── Miscellaneous ────────────────────────────────────────────────────────────
 *.class
 *.log
 *.pyc
@@ -12,43 +12,47 @@
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
+# ─── IntelliJ / Android Studio ───────────────────────────────────────────────
 *.iml
 *.ipr
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# ─── VS Code (optional — uncomment to ignore) ─────────────────────────────────
+# .vscode/
 
-# Flutter/Dart/Pub related
+# ─── Flutter / Dart / Pub ─────────────────────────────────────────────────────
 **/doc/api/
 **/ios/Flutter/.last_build_id
 build/
 .dart_tool/
 .packages
-selenium_tests/node_modules/
 /coverage/
 
-# Symbolication related
+# ─── Symbolication & Obfuscation ──────────────────────────────────────────────
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
+# ─── Android build artifacts ──────────────────────────────────────────────────
 /android/app/debug
 /android/app/profile
 /android/app/release
-
-build/
-*.apk
-*.so
-*.dill
-build/
 *.apk
 *.so
 *.dill
 *.cache
+
+# ─── Node.js (Selenium & Appium test dependencies) ───────────────────────────
+selenium_tests/node_modules/
+appium_tests/node_modules/
+selenium_tests/reports/
+appium_tests/reports/
+
+# ─── Environment / Secrets ────────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+*.secret
+
+# ─── macOS ────────────────────────────────────────────────────────────────────
+**/.DS_Store

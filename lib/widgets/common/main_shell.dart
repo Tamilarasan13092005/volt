@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/app_utils.dart';
@@ -23,30 +22,39 @@ class _MainShellState extends State<MainShell> {
     const _NavItem(
         icon: Icons.dashboard_rounded,
         label: 'Dashboard',
-        route: AppRouter.dashboard),
+        route: AppRouter.dashboard,
+        key: Key('nav_dashboard')),
     const _NavItem(
         icon: Icons.people_rounded,
         label: 'Volunteers',
-        route: AppRouter.volunteers),
+        route: AppRouter.volunteers,
+        key: Key('nav_volunteers')),
     const _NavItem(
-        icon: Icons.event_rounded, label: 'Events', route: AppRouter.events),
+        icon: Icons.event_rounded,
+        label: 'Events',
+        route: AppRouter.events,
+        key: Key('nav_events')),
     const _NavItem(
         icon: Icons.fact_check_rounded,
         label: 'Attendance',
-        route: AppRouter.attendance),
+        route: AppRouter.attendance,
+        key: Key('nav_attendance')),
     const _NavItem(
         icon: Icons.analytics_rounded,
         label: 'Reports',
-        route: AppRouter.reports),
+        route: AppRouter.reports,
+        key: Key('nav_reports')),
     const _NavItem(
         icon: Icons.auto_awesome_rounded,
         label: 'AI Assistant',
         route: AppRouter.aiChat,
-        isPrimary: true),
+        isPrimary: true,
+        key: Key('nav_ai_chat')),
     const _NavItem(
         icon: Icons.settings_rounded,
         label: 'Settings',
-        route: AppRouter.settings),
+        route: AppRouter.settings,
+        key: Key('nav_settings')),
   ];
 
   @override
@@ -252,6 +260,7 @@ class _SidebarItem extends StatelessWidget {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
+          key: item.key,
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),
           child: AnimatedContainer(
@@ -360,6 +369,7 @@ class _MobileShell extends StatelessWidget {
               children: mainItems.map((item) {
                 final isActive = location == item.route;
                 return GestureDetector(
+                  key: item.key,
                   onTap: () => context.go(item.route),
                   child: AnimatedContainer(
                     duration: AppConstants.durationFast,
@@ -411,10 +421,12 @@ class _NavItem {
   final String label;
   final String route;
   final bool isPrimary;
+  final Key? key;
   const _NavItem({
     required this.icon,
     required this.label,
     required this.route,
     this.isPrimary = false,
+    this.key,
   });
 }

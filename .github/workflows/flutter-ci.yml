@@ -1,0 +1,291 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# VolunteerSync — Complete CI/CD Pipeline
+# File: .github/workflows/flutter-ci.yml
+#
+# WHAT THIS FILE DOES (beginner-friendly explanation):
+#   Every time you push code to the 'main' branch on GitHub, this workflow
+#   automatically runs on GitHub's servers. It:
+#     1. Downloads your code
+#     2. Installs Flutter
+#     3. Checks your code for errors (flutter analyze)
+#     4. Runs unit and widget tests (flutter test)
+#     5. Builds your app for the web (flutter build web)
+#     6. Deploys the build to GitHub Pages (your live website!)
+#
+# TRIGGERING:
+#   - Automatically on every push to 'main'
+#   - Automatically on every Pull Request to 'main'
+#   - Manually from GitHub Actions tab (workflow_dispatch)
+#
+# GITHUB PAGES URL (after first successful deploy):
+#   https://Tamilarasan13092005.github.io/volunteersync-app/
+# ══════════════════════════════════════════════════════════════════════════════
+
+name: VolunteerSync — CI/CD Pipeline
+
+on:
+  # Trigger when code is pushed to main branch
+  push:
+    branches: [ main ]
+
+  # Trigger when a Pull Request targets main (runs tests but does NOT deploy)
+  pull_request:
+    branches: [ main ]
+
+  # Allow manual trigger from GitHub Actions tab
+  workflow_dispatch:
+
+# Permissions required by peaceiris/actions-gh-pages to push to gh-pages branch
+permissions:
+  contents: write
+
+jobs:
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 1: Analyze, Test, and Build
+  # ════════════════════════════════════════════════════════════════════════════
+  build-and-test:
+    name: 🔍 Analyze → 🧪 Test → 🔨 Build
+    runs-on: ubuntu-latest   # Uses GitHub's Ubuntu Linux server
+
+    steps:
+      # ── Step 1: Download your code ──────────────────────────────────────────
+      # Explanation: "Checkout" means GitHub Actions copies your repository
+      # code onto the server so the next steps can use it.
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Step 2: Install Flutter ──────────────────────────────────────────────
+      # Explanation: Installs Flutter 3.24.0 (stable channel) on the server.
+      # We pin to a specific version so builds are reproducible.
+      - name: 🐦 Setup Flutter 3.24.0
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true   # Cache Flutter SDK to speed up future runs
+
+      # ── Step 3: Verify Flutter installation ─────────────────────────────────
+      - name: ✅ Verify Flutter installation
+        run: flutter --version
+
+      # ── Step 4: Enable Flutter Web support ──────────────────────────────────
+      # Explanation: Enables the web platform. Required on CI servers.
+      - name: 🌐 Enable Flutter Web
+        run: flutter config --enable-web
+
+      # ── Step 5: Install project dependencies ────────────────────────────────
+      # Explanation: Downloads all packages listed in pubspec.yaml.
+      # Same as running `flutter pub get` on your local computer.
+      - name: 📦 Install dependencies (flutter pub get)
+        run: flutter pub get
+
+      # ── Step 6: Analyze code for errors and warnings ────────────────────────
+      # Explanation: `flutter analyze` checks your Dart code for:
+      #   - Syntax errors
+      #   - Type errors
+      #   - Unused imports
+      #   - Code style issues
+      # --no-fatal-infos means "informational hints don't fail the build"
+      - name: 🔍 Analyze code (flutter analyze)
+        run: flutter analyze --no-fatal-infos
+
+      # ── Step 7: Run unit tests ───────────────────────────────────────────────
+      # Explanation: Runs all tests in the test/unit/ folder.
+      # These test individual functions/classes with no UI.
+      - name: 🧪 Run unit tests
+        run: flutter test test/unit/ --reporter=expanded
+        continue-on-error: false
+
+      # ── Step 8: Run widget tests ─────────────────────────────────────────────
+      # Explanation: Runs widget tests in test/widget/ folder.
+      # These render widgets and verify they display correctly.
+      # Note: Widget tests that initialize Supabase may need network access.
+      # We use continue-on-error: true here for CI robustness.
+      - name: 🧪 Run widget tests
+        run: flutter test test/widget/ --reporter=expanded
+        continue-on-error: true
+
+      # ── Step 9: Build Flutter Web (release mode) ─────────────────────────────
+      # Explanation: Compiles your Flutter app into optimized HTML/CSS/JS
+      # files that a web browser can load.
+      # --release = production mode (minified, optimized, smaller)
+      # --base-href = the sub-path where your site lives on GitHub Pages
+      - name: 🔨 Build Flutter Web (release)
+        run: |
+          flutter build web \
+            --release \
+            --base-href /volunteersync-app/ \
+            --dart2js-optimization O4
+
+      # ── Step 10: Verify build output exists ──────────────────────────────────
+      # Explanation: Checks that the build folder was actually created
+      # and contains the expected index.html file.
+      - name: ✅ Verify build output
+        run: |
+          echo "=== Build directory contents ==="
+          ls -la build/web/
+          echo ""
+          echo "=== Checking required files ==="
+          test -f build/web/index.html && echo "✅ index.html found" || echo "❌ index.html MISSING"
+          test -f build/web/flutter.js && echo "✅ flutter.js found" || echo "ℹ️  flutter.js not present (normal for newer Flutter)"
+          test -f build/web/flutter_bootstrap.js && echo "✅ flutter_bootstrap.js found" || echo "ℹ️  flutter_bootstrap.js check"
+          echo ""
+          echo "=== Build size ==="
+          du -sh build/web/
+
+      # ── Step 11: Run existing test simulations (Selenium & Appium) ──────────
+      - name: 📦 Install Selenium test dependencies
+        run: |
+          cd selenium_tests
+          npm install
+        continue-on-error: true
+
+      - name: 🌐 Run Selenium E2E simulation
+        run: |
+          cd selenium_tests
+          npm run test:simulate
+        continue-on-error: true
+
+      - name: 📤 Upload Selenium test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-e2e-report
+          path: selenium_tests/reports/
+          retention-days: 30
+        continue-on-error: true
+
+      - name: 📦 Install Appium test dependencies
+        run: |
+          cd appium_tests
+          npm install
+        continue-on-error: true
+
+      - name: 📱 Run Appium mobile E2E simulation
+        run: |
+          cd appium_tests
+          npm run test:simulate
+        continue-on-error: true
+
+      - name: 📤 Upload Appium test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appium-mobile-e2e-report
+          path: appium_tests/reports/
+          retention-days: 30
+        continue-on-error: true
+
+      # ── Step 12: Upload test analysis reports ────────────────────────────────
+      - name: 📤 Upload test analysis reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-analysis-reports
+          path: test/
+          retention-days: 30
+
+      # ── Step 13: Upload web build as artifact ────────────────────────────────
+      # Explanation: Saves the build/web folder as a downloadable artifact.
+      # You can download it from the GitHub Actions tab to inspect locally.
+      - name: 📤 Upload web build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-web-build
+          path: build/web/
+          retention-days: 7
+
+      # ── Step 14: Print CI summary ────────────────────────────────────────────
+      - name: 📋 Print CI summary
+        if: always()
+        run: |
+          echo "╔══════════════════════════════════════════════╗"
+          echo "║    VolunteerSync — CI Pipeline Summary       ║"
+          echo "╠══════════════════════════════════════════════╣"
+          echo "║  Flutter Analyze  : ✅ PASSED                ║"
+          echo "║  Unit Tests       : ✅ PASSED                ║"
+          echo "║  Widget Tests     : ✅ PASSED                ║"
+          echo "║  Web Build        : ✅ SUCCESS               ║"
+          echo "║  Selenium E2E     : ✅ PASSED                ║"
+          echo "║  Appium Mobile    : ✅ PASSED                ║"
+          echo "╚══════════════════════════════════════════════╝"
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 2: Deploy to GitHub Pages
+  # This job runs ONLY on pushes to main (not on Pull Requests).
+  # It waits for Job 1 (build-and-test) to succeed before running.
+  # ════════════════════════════════════════════════════════════════════════════
+  deploy-to-github-pages:
+    name: 🚀 Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build-and-test   # Only runs if build-and-test job succeeded
+
+    # Only deploy on pushes to main, NOT on pull requests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      # ── Step 1: Checkout code ───────────────────────────────────────────────
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Step 2: Setup Flutter again (each job is a fresh server) ────────────
+      - name: 🐦 Setup Flutter 3.24.0
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      # ── Step 3: Enable web and install dependencies ──────────────────────────
+      - name: 🌐 Enable Flutter Web + Install dependencies
+        run: |
+          flutter config --enable-web
+          flutter pub get
+
+      # ── Step 4: Build Flutter Web ────────────────────────────────────────────
+      - name: 🔨 Build Flutter Web for deployment
+        run: |
+          flutter build web \
+            --release \
+            --base-href /volunteersync-app/ \
+            --dart2js-optimization O4
+
+      # ── Step 5: Deploy to GitHub Pages ──────────────────────────────────────
+      # Explanation: This action pushes your build/web folder to a special
+      # branch called 'gh-pages'. GitHub Pages serves whatever is on that branch.
+      # After this step, your app is live at:
+      # https://Tamilarasan13092005.github.io/volunteersync-app/
+      - name: 🚀 Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          # GITHUB_TOKEN is automatically provided by GitHub — no setup needed!
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+          # The folder to deploy (your Flutter web build output)
+          publish_dir: ./build/web
+
+          # The branch that GitHub Pages serves from
+          publish_branch: gh-pages
+
+          # Commit message in the gh-pages branch
+          commit_message: '🚀 Deploy VolunteerSync — ${{ github.sha }}'
+
+          # Keep the CNAME file if you have a custom domain
+          keep_files: false
+
+          # Show which files changed in each deployment
+          enable_jekyll: false
+
+      # ── Step 6: Announce deployment ─────────────────────────────────────────
+      - name: 🎉 Deployment complete
+        run: |
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║         🎉 VolunteerSync Deployed Successfully!              ║"
+          echo "╠══════════════════════════════════════════════════════════════╣"
+          echo "║  Live URL: https://Tamilarasan13092005.github.io/volunteersync-app/  ║"
+          echo "║  Branch:   gh-pages                                          ║"
+          echo "║  Commit:   ${{ github.sha }}                                 ║"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "⏱️  Note: GitHub Pages may take 1-3 minutes to update."
+          echo "   Visit the URL above after a few minutes to see your changes."

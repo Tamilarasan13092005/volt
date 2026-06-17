@@ -211,6 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 8),
                           TextFormField(
+                            key: const Key('login_email_field'),
                             controller: _emailCtrl,
                             keyboardType: TextInputType.emailAddress,
                             style: const TextStyle(
@@ -240,6 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 8),
                           TextFormField(
+                            key: const Key('login_password_field'),
                             controller: _passCtrl,
                             obscureText: _obscure,
                             style: const TextStyle(
@@ -251,6 +253,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               prefixIcon: const Icon(Icons.lock_outline_rounded,
                                   color: AppColors.textMuted, size: 20),
                               suffixIcon: IconButton(
+                                key: const Key('login_password_toggle'),
                                 onPressed: () =>
                                     setState(() => _obscure = !_obscure),
                                 icon: Icon(
@@ -271,6 +274,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
+                              key: const Key('forgot_password_link'),
                               onPressed: () =>
                                   context.go(AppRouter.forgotPassword),
                               child: const Text(
@@ -315,6 +319,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           // Sign in button
                           GradientButton(
+                            key: const Key('login_submit_button'),
                             label: 'Sign In',
                             onPressed: _submit,
                             isLoading: auth.status == AuthStatus.loading,
@@ -336,6 +341,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: TextStyle(
                                 color: AppColors.textMuted, fontSize: 14)),
                         GestureDetector(
+                          key: const Key('signup_link'),
                           onTap: () => context.go(AppRouter.register),
                           child: const Text(
                             'Sign up free →',

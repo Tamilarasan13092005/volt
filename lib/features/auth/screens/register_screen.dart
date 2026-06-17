@@ -133,6 +133,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Column(
                       children: [
                         TextFormField(
+                          key: const Key('register_name_field'),
                           controller: _nameCtrl,
                           style: const TextStyle(color: AppColors.textPrimary),
                           decoration: const InputDecoration(
@@ -148,6 +149,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 14),
 
                         TextFormField(
+                          key: const Key('register_org_field'),
                           controller: _orgCtrl,
                           style: const TextStyle(color: AppColors.textPrimary),
                           decoration: const InputDecoration(
@@ -163,6 +165,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 14),
 
                         TextFormField(
+                          key: const Key('register_email_field'),
                           controller: _emailCtrl,
                           keyboardType: TextInputType.emailAddress,
                           style: const TextStyle(color: AppColors.textPrimary),
@@ -179,6 +182,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 14),
 
                         TextFormField(
+                          key: const Key('register_password_field'),
                           controller: _passCtrl,
                           obscureText: _obscure,
                           style: const TextStyle(color: AppColors.textPrimary),
@@ -187,6 +191,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             prefixIcon: const Icon(Icons.lock_outline_rounded,
                                 color: AppColors.textMuted, size: 20),
                             suffixIcon: IconButton(
+                              key: const Key('register_password_toggle'),
                               onPressed: () =>
                                   setState(() => _obscure = !_obscure),
                               icon: Icon(
@@ -207,6 +212,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                         // Terms
                         GestureDetector(
+                          key: const Key('register_terms_checkbox'),
                           onTap: () => setState(() => _agreed = !_agreed),
                           child: Row(
                             children: [
@@ -246,6 +252,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 24),
 
                         GradientButton(
+                          key: const Key('register_submit_button'),
                           label: 'Create Account',
                           onPressed: _submit,
                           isLoading: auth.status == AuthStatus.loading,
@@ -263,6 +270,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           style: TextStyle(
                               color: AppColors.textMuted, fontSize: 14)),
                       GestureDetector(
+                        key: const Key('signin_link'),
                         onTap: () => context.go(AppRouter.login),
                         child: const Text('Sign in',
                             style: TextStyle(
