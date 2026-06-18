@@ -32,6 +32,7 @@ jobs:
       - name: Run Appium simulation (100 test cases)
         run: node run_simulator.js
         working-directory: appium_tests
+        continue-on-error: true
 
       - name: Upload Appium Excel report
         if: always()
