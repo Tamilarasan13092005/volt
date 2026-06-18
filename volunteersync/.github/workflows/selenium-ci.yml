@@ -1,0 +1,91 @@
+name: Selenium E2E Tests
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  selenium_tests:
+    name: 🧪 Selenium E2E Tests (Simulation)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: selenium_tests/package-lock.json
+
+      - name: Install Selenium dependencies
+        run: npm ci
+        working-directory: selenium_tests
+
+      - name: Create reports directory
+        run: mkdir -p selenium_tests/reports/screenshots
+
+      - name: Run Selenium simulation (100 test cases)
+        run: node run_simulator.js
+        working-directory: selenium_tests
+
+      - name: Upload Selenium Excel report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-report-${{ github.run_number }}
+          path: selenium_tests/reports/
+          retention-days: 30
+
+  selenium_real:
+    name: 🌍 Selenium Real Tests (vs. Live Site)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: selenium_tests/package-lock.json
+
+      - name: Install Selenium dependencies
+        run: npm ci
+        working-directory: selenium_tests
+
+      - name: Install Chrome & ChromeDriver
+        uses: nanasess/setup-chromedriver@v2
+
+      - name: Create reports directory
+        run: mkdir -p selenium_tests/reports/screenshots
+
+      - name: Wait for Deployment
+        run: |
+          echo "Waiting 90 seconds to ensure the main deploy workflow has updated GitHub Pages..."
+          sleep 90
+
+      - name: Run Selenium E2E against deployed site
+        run: |
+          BASE_URL=https://tamilarasan13092005.github.io/volunteersync/ \
+          HEADLESS=true \
+          node e2e_test.js
+        working-directory: selenium_tests
+        continue-on-error: true
+        env:
+          BASE_URL: https://tamilarasan13092005.github.io/volunteersync/
+          HEADLESS: "true"
+
+      - name: Upload real Selenium report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-real-report-${{ github.run_number }}
+          path: selenium_tests/reports/
+          retention-days: 30
