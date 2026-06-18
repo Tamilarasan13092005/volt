@@ -2,27 +2,26 @@ const path = require('path');
 
 // Selenium WebDriver Configuration for VolunteerSync Flutter Web App
 const config = {
-  // Base URL of the running Flutter Web app (served locally or deployed)
-  baseUrl: 'http://localhost:8080',
+  // Base URL — overridable via BASE_URL env var (used in CI against deployed site)
+  baseUrl: process.env.BASE_URL || 'http://localhost:8080',
 
   // Browser settings
   browser: 'chrome',
 
-  // ChromeDriver options
+  // ChromeDriver options — HEADLESS=true enables headless mode in CI
   chromeOptions: {
     args: [
       '--window-size=1280,900',
       '--disable-gpu',
       '--no-sandbox',
       '--disable-dev-shm-usage',
-      // Uncomment below to run headlessly (no browser window):
-      // '--headless',
+      ...(process.env.HEADLESS === 'true' ? ['--headless=new'] : []),
     ]
   },
 
   // Demo credentials (from README)
-  demoEmail: 'alex@volunteersync.io',
-  demoPassword: 'password123',
+  demoEmail: process.env.TEST_EMAIL || 'alex@volunteersync.io',
+  demoPassword: process.env.TEST_PASSWORD || 'password123',
 
   // Timeouts (ms)
   implicitWait: 5000,
