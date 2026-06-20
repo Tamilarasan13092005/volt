@@ -105,8 +105,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         // Stat cards
                         if (dash.stats != null) ...[
                           isMobile
-                              ? _MobileStatGrid(stats: dash.stats!)
-                              : _DesktopStatRow(stats: dash.stats!),
+                              ? _MobileStatGrid(stats: dash.stats)
+                              : _DesktopStatRow(stats: dash.stats),
                           const SizedBox(height: 28),
                         ],
 
