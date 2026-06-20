@@ -1,19 +1,15 @@
 {
   "name": "volunteersync-selenium-tests",
   "version": "1.0.0",
-  "description": "Selenium WebDriver E2E test suite for VolunteerSync Flutter Web application with Excel reporting",
-  "main": "e2e_test.js",
+  "description": "E2E Web tests for VolunteerSync",
+  "main": "runner.js",
   "scripts": {
-    "test:real": "node e2e_test.js",
-    "test:simulate": "node run_simulator.js",
-    "test:simulate:fail": "node run_simulator.js --fail",
-    "test": "npm run test:simulate"
+    "test": "node runner.js"
   },
   "dependencies": {
-    "selenium-webdriver": "^4.21.0",
+    "selenium-webdriver": "^4.19.0",
     "exceljs": "^4.4.0",
-    "chromedriver": "^126.0.0"
-  },
-  "author": "VolunteerSync Team",
-  "license": "MIT"
+    "chai": "^4.4.1",
+    "mocha": "^10.4.0"
+  }
 }

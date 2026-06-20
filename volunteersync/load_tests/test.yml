@@ -1,0 +1,21 @@
+config:
+  target: "https://tamilarasan13092005.supabase.co" # Default, can be overridden by environment variable
+  phases:
+    - duration: 60
+      arrivalCount: 100
+      name: "100 VUs over 1 minute"
+  environments:
+    production:
+      target: "{{ $processEnvironment.SUPABASE_URL }}"
+
+scenarios:
+  - name: "Health Check and Data Fetch"
+    flow:
+      - get:
+          url: "/rest/v1/"
+          headers:
+            apikey: "{{ $processEnvironment.SUPABASE_ANON_KEY }}"
+            Authorization: "Bearer {{ $processEnvironment.SUPABASE_ANON_KEY }}"
+      - think: 1
+      # Without a specific table we just hit the root REST endpoint to measure DB responsiveness.
+      # In a real scenario, we'd hit /rest/v1/volunteers?select=*

@@ -1,4 +1,4 @@
-name: Selenium E2E Tests
+name: End-to-End Test Suites
 
 on:
   push:
@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  selenium_tests:
-    name: 🧪 Selenium E2E Tests (Simulation)
+  selenium_web:
+    name: 🌐 Selenium Web Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -22,19 +22,22 @@ jobs:
           cache: "npm"
           cache-dependency-path: selenium_tests/package-lock.json
 
-      - name: Install Selenium dependencies
-        run: npm ci
+      - name: Install Dependencies
+        run: npm install
         working-directory: selenium_tests
 
-      - name: Create reports directory
-        run: mkdir -p selenium_tests/reports/screenshots
+      - name: Install Chrome & ChromeDriver
+        uses: nanasess/setup-chromedriver@v2
 
-      - name: Run Selenium simulation (100 test cases)
-        run: node run_simulator.js
-        working-directory: selenium_tests
+      - name: Run Selenium E2E Tests
+        run: npm run test
         continue-on-error: true
+        working-directory: selenium_tests
+        env:
+          BASE_URL: https://tamilarasan13092005.github.io/volunteersync/
+          HEADLESS: "true"
 
-      - name: Upload Selenium Excel report
+      - name: Upload Selenium Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -42,10 +45,9 @@ jobs:
           path: selenium_tests/reports/
           retention-days: 30
 
-  selenium_real:
-    name: 🌍 Selenium Real Tests (vs. Live Site)
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  appium_android:
+    name: 📱 Appium Android Tests
+    runs-on: macos-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -55,38 +57,69 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: selenium_tests/package-lock.json
+          cache-dependency-path: appium_tests/package-lock.json
 
-      - name: Install Selenium dependencies
-        run: npm ci
-        working-directory: selenium_tests
+      - name: Install Appium Dependencies
+        run: npm install
+        working-directory: appium_tests
 
-      - name: Install Chrome & ChromeDriver
-        uses: nanasess/setup-chromedriver@v2
+      - name: Install Appium Server
+        run: npm install -g appium
+        
+      - name: Install UIAutomator2
+        run: appium driver install uiautomator2
 
-      - name: Create reports directory
-        run: mkdir -p selenium_tests/reports/screenshots
+      - name: Start Appium Server
+        run: appium --log-level error &
+        
+      - name: Build APK (Mock Step for Example)
+        run: echo "In a real workflow, you would build or download the APK here"
 
-      - name: Wait for Deployment
-        run: |
-          echo "Waiting 90 seconds to ensure the main deploy workflow has updated GitHub Pages..."
-          sleep 90
-
-      - name: Run Selenium E2E against deployed site
-        run: |
-          BASE_URL=https://tamilarasan13092005.github.io/volunteersync/ \
-          HEADLESS=true \
-          node e2e_test.js
-        working-directory: selenium_tests
+      - name: Run Appium Android Tests
+        run: npm run test
         continue-on-error: true
+        working-directory: appium_tests
         env:
-          BASE_URL: https://tamilarasan13092005.github.io/volunteersync/
-          HEADLESS: "true"
+          APK_PATH: /path/to/app-debug.apk # Update this to your real APK path
 
-      - name: Upload real Selenium report
+      - name: Upload Appium Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: selenium-real-report-${{ github.run_number }}
-          path: selenium_tests/reports/
+          name: appium-report-${{ github.run_number }}
+          path: appium_tests/reports/
+          retention-days: 30
+
+  load_tests:
+    name: ⚡ Backend Load Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: load_tests/package-lock.json
+
+      - name: Install Load Test Dependencies
+        run: npm install
+        working-directory: load_tests
+
+      - name: Run Artillery Load Tests
+        run: npm run test
+        continue-on-error: true
+        working-directory: load_tests
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Upload Load Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-report-${{ github.run_number }}
+          path: load_tests/reports/
           retention-days: 30

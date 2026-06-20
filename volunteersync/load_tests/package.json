@@ -1,0 +1,12 @@
+{
+  "name": "volunteersync-load-tests",
+  "version": "1.0.0",
+  "description": "Artillery load tests for Supabase API",
+  "scripts": {
+    "test": "artillery run test.yml -o reports/artillery_report.json && node generate_report.js"
+  },
+  "dependencies": {
+    "artillery": "^2.0.11",
+    "exceljs": "^4.4.0"
+  }
+}
