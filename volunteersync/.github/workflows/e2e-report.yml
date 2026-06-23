@@ -1,0 +1,295 @@
+name: 📊 E2E Test Reports (Appium + Selenium)
+
+# ─── Triggers ──────────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: ["main", "develop", "feature/**", "hotfix/**"]
+  pull_request:
+    branches: ["main", "develop"]
+  workflow_dispatch:          # allow manual trigger from GitHub UI
+    inputs:
+      suite:
+        description: "Which suite to run"
+        required: false
+        default: "all"
+        type: choice
+        options: [all, appium, selenium]
+
+# ─── Concurrency: cancel outdated runs on the same branch ──────────────────────
+concurrency:
+  group: e2e-reports-${{ github.ref }}
+  cancel-in-progress: true
+
+# ─── Permissions ───────────────────────────────────────────────────────────────
+permissions:
+  contents: read
+  actions: write          # needed to upload/download artifacts
+
+# ─── Global env ────────────────────────────────────────────────────────────────
+env:
+  NODE_VERSION: "20"
+  TEST_DIR: test
+  REPORTS_DIR: test/e2e/reports
+  BASE_URL: https://tamilarasan13092005.github.io/volunteersync/
+
+# ══════════════════════════════════════════════════════════════════════════════
+# JOB 1 — Appium Android E2E  (mock mode, generates Excel)
+# ══════════════════════════════════════════════════════════════════════════════
+jobs:
+  appium-e2e:
+    name: 📱 Appium Android E2E Report
+    runs-on: ubuntu-latest
+    # Skip this job if the manual trigger selected selenium-only
+    if: >
+      github.event_name != 'workflow_dispatch' ||
+      github.event.inputs.suite == 'all' ||
+      github.event.inputs.suite == 'appium'
+
+    steps:
+      # ── Checkout ─────────────────────────────────────────────────────────────
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ── Node setup ───────────────────────────────────────────────────────────
+      - name: ⚙️ Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: ${{ env.TEST_DIR }}/package-lock.json
+
+      # ── Install dependencies ─────────────────────────────────────────────────
+      - name: 📦 Install E2E dependencies
+        run: npm ci
+        working-directory: ${{ env.TEST_DIR }}
+
+      # ── Create reports dir ───────────────────────────────────────────────────
+      - name: 📁 Ensure reports directory exists
+        run: mkdir -p ${{ env.REPORTS_DIR }}
+
+      # ── Run Appium suite (mock mode) ─────────────────────────────────────────
+      - name: 🤖 Run Appium E2E Tests (Mock Mode)
+        id: appium_run
+        run: node e2e/appium/runner.js
+        working-directory: ${{ env.TEST_DIR }}
+        env:
+          # Mock mode is the default – no APK or real device needed.
+          # To use a real APK: set APK_PATH in GitHub Secrets and remove MOCK.
+          APK_PATH: ""
+          CI: "true"
+
+      # ── Stamp report with commit metadata ────────────────────────────────────
+      - name: 🏷️ Annotate report with commit info
+        if: always()
+        run: |
+          echo "Branch  : ${{ github.ref_name }}"             >> ${{ env.REPORTS_DIR }}/appium_run_info.txt
+          echo "Commit  : ${{ github.sha }}"                  >> ${{ env.REPORTS_DIR }}/appium_run_info.txt
+          echo "Actor   : ${{ github.actor }}"                >> ${{ env.REPORTS_DIR }}/appium_run_info.txt
+          echo "Run #   : ${{ github.run_number }}"           >> ${{ env.REPORTS_DIR }}/appium_run_info.txt
+          echo "Trigger : ${{ github.event_name }}"           >> ${{ env.REPORTS_DIR }}/appium_run_info.txt
+          echo "Time    : $(date -u '+%Y-%m-%d %H:%M:%S UTC')">> ${{ env.REPORTS_DIR }}/appium_run_info.txt
+
+      # ── Upload artifact ──────────────────────────────────────────────────────
+      - name: 📤 Upload Appium Excel Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appium-e2e-report_run-${{ github.run_number }}_${{ github.sha }}
+          path: |
+            ${{ env.REPORTS_DIR }}/appium_e2e_report.xlsx
+            ${{ env.REPORTS_DIR }}/appium_run_info.txt
+          retention-days: 90
+          if-no-files-found: warn
+
+      # ── Print summary to GitHub Step Summary ─────────────────────────────────
+      - name: 📝 Write Appium summary to job summary
+        if: always()
+        run: |
+          echo "## 📱 Appium E2E Report — Run \`#${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered by | \`${{ github.actor }}\` via \`${{ github.event_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Report | \`appium_e2e_report.xlsx\` (download from Artifacts ↑) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> ℹ️ Tests run in **mock mode** — 181 test cases across 8 screens." >> $GITHUB_STEP_SUMMARY
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# JOB 2 — Selenium Web E2E  (mock mode, generates Excel)
+# ══════════════════════════════════════════════════════════════════════════════
+  selenium-e2e:
+    name: 🌐 Selenium Web E2E Report
+    runs-on: ubuntu-latest
+    # Skip if manual trigger selected appium-only
+    if: >
+      github.event_name != 'workflow_dispatch' ||
+      github.event.inputs.suite == 'all' ||
+      github.event.inputs.suite == 'selenium'
+
+    steps:
+      # ── Checkout ─────────────────────────────────────────────────────────────
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ── Node setup ───────────────────────────────────────────────────────────
+      - name: ⚙️ Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: ${{ env.TEST_DIR }}/package-lock.json
+
+      # ── Install dependencies ─────────────────────────────────────────────────
+      - name: 📦 Install E2E dependencies
+        run: npm ci
+        working-directory: ${{ env.TEST_DIR }}
+
+      # ── Create reports dir ───────────────────────────────────────────────────
+      - name: 📁 Ensure reports directory exists
+        run: mkdir -p ${{ env.REPORTS_DIR }}
+
+      # ── Run Selenium suite (mock mode) ───────────────────────────────────────
+      - name: 🌐 Run Selenium E2E Tests (Mock Mode)
+        id: selenium_run
+        run: node e2e/selenium/runner.js
+        working-directory: ${{ env.TEST_DIR }}
+        env:
+          BASE_URL: ${{ env.BASE_URL }}
+          HEADLESS: "true"
+          # MOCK=true by default – no real ChromeDriver needed.
+          # Set MOCK=false in env to run real browser tests.
+          MOCK: "true"
+          CI: "true"
+
+      # ── Stamp report with commit metadata ────────────────────────────────────
+      - name: 🏷️ Annotate report with commit info
+        if: always()
+        run: |
+          echo "Branch  : ${{ github.ref_name }}"             >> ${{ env.REPORTS_DIR }}/selenium_run_info.txt
+          echo "Commit  : ${{ github.sha }}"                  >> ${{ env.REPORTS_DIR }}/selenium_run_info.txt
+          echo "Actor   : ${{ github.actor }}"                >> ${{ env.REPORTS_DIR }}/selenium_run_info.txt
+          echo "Run #   : ${{ github.run_number }}"           >> ${{ env.REPORTS_DIR }}/selenium_run_info.txt
+          echo "Trigger : ${{ github.event_name }}"           >> ${{ env.REPORTS_DIR }}/selenium_run_info.txt
+          echo "URL     : ${{ env.BASE_URL }}"                >> ${{ env.REPORTS_DIR }}/selenium_run_info.txt
+          echo "Time    : $(date -u '+%Y-%m-%d %H:%M:%S UTC')">> ${{ env.REPORTS_DIR }}/selenium_run_info.txt
+
+      # ── Upload artifact ──────────────────────────────────────────────────────
+      - name: 📤 Upload Selenium Excel Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-e2e-report_run-${{ github.run_number }}_${{ github.sha }}
+          path: |
+            ${{ env.REPORTS_DIR }}/selenium_e2e_report.xlsx
+            ${{ env.REPORTS_DIR }}/selenium_run_info.txt
+          retention-days: 90
+          if-no-files-found: warn
+
+      # ── Print summary to GitHub Step Summary ─────────────────────────────────
+      - name: 📝 Write Selenium summary to job summary
+        if: always()
+        run: |
+          echo "## 🌐 Selenium E2E Report — Run \`#${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target URL | ${{ env.BASE_URL }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered by | \`${{ github.actor }}\` via \`${{ github.event_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Report | \`selenium_e2e_report.xlsx\` (download from Artifacts ↑) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> ℹ️ Tests run in **mock mode** — 119 test cases across 8 screens." >> $GITHUB_STEP_SUMMARY
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# JOB 3 — Combined Summary  (runs after both jobs complete)
+# ══════════════════════════════════════════════════════════════════════════════
+  e2e-summary:
+    name: 📋 Combined E2E Summary
+    runs-on: ubuntu-latest
+    needs: [appium-e2e, selenium-e2e]
+    # Always run summary, even if previous jobs failed
+    if: always()
+
+    steps:
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ── Download both reports ────────────────────────────────────────────────
+      - name: 📥 Download Appium report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: appium-e2e-report_run-${{ github.run_number }}_${{ github.sha }}
+          path: downloaded/appium
+        continue-on-error: true
+
+      - name: 📥 Download Selenium report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: selenium-e2e-report_run-${{ github.run_number }}_${{ github.sha }}
+          path: downloaded/selenium
+        continue-on-error: true
+
+      # ── List what was generated ──────────────────────────────────────────────
+      - name: 📂 List generated reports
+        run: |
+          echo "=== Appium Report ===" && ls -lh downloaded/appium/ 2>/dev/null || echo "(not found)"
+          echo "=== Selenium Report ===" && ls -lh downloaded/selenium/ 2>/dev/null || echo "(not found)"
+
+      # ── Upload combined bundle ───────────────────────────────────────────────
+      - name: 📦 Upload combined E2E reports bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ALL-e2e-reports_run-${{ github.run_number }}_${{ github.sha }}
+          path: downloaded/
+          retention-days: 90
+          if-no-files-found: warn
+
+      # ── Write combined GitHub Step Summary ───────────────────────────────────
+      - name: 📝 Write combined summary
+        if: always()
+        run: |
+          echo "# 📊 VolunteerSync — E2E Test Report Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Run:** \`#${{ github.run_number }}\` · **Branch:** \`${{ github.ref_name }}\` · **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Suite | Platform | Screens | Test Cases | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|----------|---------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Appium E2E | 📱 Android (UiAutomator2) | 8 | **181** | ${{ needs.appium-e2e.result == 'success' && '✅ Pass' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Selenium E2E | 🌐 Chrome Web | 8 | **119** | ${{ needs.selenium-e2e.result == 'success' && '✅ Pass' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📥 Download Reports" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Go to **Actions → This run → Artifacts** to download:" >> $GITHUB_STEP_SUMMARY
+          echo "- \`appium-e2e-report_run-${{ github.run_number }}_...\` → \`appium_e2e_report.xlsx\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`selenium-e2e-report_run-${{ github.run_number }}_...\` → \`selenium_e2e_report.xlsx\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ALL-e2e-reports_run-${{ github.run_number }}_...\` → Both reports bundled" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📋 Screen Coverage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Screen | Appium Cases | Selenium Cases | Total |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|:-----------:|:--------------:|:-----:|" >> $GITHUB_STEP_SUMMARY
+          echo "| Landing | 10 | 10 | 20 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Login | 12 | 10 | 22 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Register | 10 | 7 | 17 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Forgot Password | 5 | 3 | 8 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dashboard | 20 | 20 | 40 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Volunteers | 22 | 12 | 34 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Events | 24 | 15 | 39 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Attendance | 25 | 12 | 37 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Reports | 15 | 8 | 23 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Settings | 23 | 12 | 35 |" >> $GITHUB_STEP_SUMMARY
+          echo "| AI Chat | 15 | 10 | 25 |" >> $GITHUB_STEP_SUMMARY
+          echo "| **TOTAL** | **181** | **119** | **300** |" >> $GITHUB_STEP_SUMMARY

@@ -46,3 +46,10 @@ app.*.map.json
 
 # Node.js
 node_modules/
+
+# E2E Test Suite (test/)
+# Keep node_modules inside test/ out of git
+test/node_modules/
+# Keep generated Excel reports IN git so CI can commit them back if needed
+# (un-comment the next line to exclude reports from git tracking)
+# test/e2e/reports/*.xlsx
