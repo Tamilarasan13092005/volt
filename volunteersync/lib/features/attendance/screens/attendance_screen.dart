@@ -53,97 +53,9 @@ class _AttendanceScreenState extends State<AttendanceScreen>
               ))
           .toList();
 
-      if (_records.isEmpty) {
-        final now = DateTime.now();
-        _records = [
-          AttendanceRecord(
-            id: 'rec-1',
-            volunteerId: 'v-1',
-            volunteerName: 'Alex Mercer',
-            eventId: 'mock-1',
-            eventTitle: 'Community Park Cleanup',
-            checkInTime: now.subtract(const Duration(days: 2, hours: 3, minutes: 45)),
-            status: 'present',
-            hoursLogged: 3,
-          ),
-          AttendanceRecord(
-            id: 'rec-2',
-            volunteerId: 'v-2',
-            volunteerName: 'Jane Doe',
-            eventId: 'mock-1',
-            eventTitle: 'Community Park Cleanup',
-            checkInTime: now.subtract(const Duration(days: 2, hours: 3, minutes: 30)),
-            status: 'late',
-            hoursLogged: 3,
-          ),
-          AttendanceRecord(
-            id: 'rec-3',
-            volunteerId: 'v-3',
-            volunteerName: 'Robert Chen',
-            eventId: 'mock-1',
-            eventTitle: 'Community Park Cleanup',
-            checkInTime: now.subtract(const Duration(days: 2, hours: 4)),
-            status: 'present',
-            hoursLogged: 3,
-          ),
-          AttendanceRecord(
-            id: 'rec-4',
-            volunteerId: 'v-4',
-            volunteerName: 'Emily Watson',
-            eventId: 'mock-2',
-            eventTitle: 'Downtown Food Drive',
-            checkInTime: now.subtract(const Duration(days: 1, hours: 2, minutes: 50)),
-            status: 'present',
-            hoursLogged: 3,
-          ),
-          AttendanceRecord(
-            id: 'rec-5',
-            volunteerId: 'v-5',
-            volunteerName: 'Michael Chang',
-            eventId: 'mock-2',
-            eventTitle: 'Downtown Food Drive',
-            checkInTime: now.subtract(const Duration(days: 1, hours: 2, minutes: 15)),
-            status: 'absent',
-            hoursLogged: 0,
-          ),
-          AttendanceRecord(
-            id: 'rec-6',
-            volunteerId: 'v-6',
-            volunteerName: 'Sarah Jenkins',
-            eventId: 'mock-2',
-            eventTitle: 'Downtown Food Drive',
-            checkInTime: now.subtract(const Duration(days: 1, hours: 2, minutes: 40)),
-            status: 'present',
-            hoursLogged: 3,
-          ),
-          AttendanceRecord(
-            id: 'rec-7',
-            volunteerId: 'v-7',
-            volunteerName: 'David Kim',
-            eventId: 'mock-1',
-            eventTitle: 'Community Park Cleanup',
-            checkInTime: now.subtract(const Duration(days: 2, hours: 3, minutes: 55)),
-            status: 'present',
-            hoursLogged: 3,
-          ),
-        ];
-      }
     } catch (e) {
       debugPrint('Error loading attendance: $e');
-      // Emergency mock data
-      final now = DateTime.now();
-      _records = [
-        AttendanceRecord(
-          id: 'rec-err-1',
-          volunteerId: 'v-err',
-          volunteerName: 'Fallback Volunteer',
-          eventId: 'mock-1',
-          eventTitle: 'Emergency Community Cleanup',
-          checkInTime: now.subtract(const Duration(hours: 1)),
-          status: 'present',
-          hoursLogged: 2,
-        ),
-      ];
+      _records = [];
     }
     setState(() => _loading = false);
   }

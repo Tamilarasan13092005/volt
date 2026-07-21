@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/chat_message.dart';
-import '../data/mock_data.dart';
+
 
 class ChatProvider extends ChangeNotifier {
   final _uuid = const Uuid();
@@ -17,10 +17,17 @@ class ChatProvider extends ChangeNotifier {
   List<ChatMessage> get messages => _messages;
   bool get isTyping => _isTyping;
   bool get sidebarOpen => _sidebarOpen;
-  List<String> get suggestions => MockData.aiSuggestions;
+  List<String> get suggestions => const [
+    '📊 Generate attendance report',
+    '👥 Suggest volunteer assignments',
+    '📅 Show upcoming events',
+    '📈 Analyze volunteer growth',
+    '⚠️ Identify at-risk volunteers',
+    '🎯 Event optimization tips',
+  ];
 
   void init() {
-    _sessions = List.from(MockData.chatSessions);
+    _sessions = [];
     _startNewSession();
   }
 
@@ -44,9 +51,7 @@ class ChatProvider extends ChangeNotifier {
     final greeting = ChatMessage(
       id: _uuid.v4(),
       role: MessageRole.assistant,
-      content: MockData.aiSuggestions.isNotEmpty
-          ? 'Hi! I\'m **Volt**, your AI volunteer coordinator. I can help you manage volunteers, analyze attendance, and optimize your events.\n\nWhat would you like to do today?'
-          : '',
+      content: 'Hi! I\'m **Volt**, your AI volunteer coordinator. I can help you manage volunteers, analyze attendance, and optimize your events.\n\nWhat would you like to do today?',
       timestamp: DateTime.now(),
     );
     _messages.add(greeting);

@@ -268,8 +268,7 @@ class DashboardProvider extends ChangeNotifier {
     } catch (e, stack) {
       debugPrint('Dashboard load error: $e\n$stack');
       _error = e.toString();
-      // Only use mock if we have nothing yet
-      if (_stats == null) _useMockData();
+      _useEmptyData();
     }
 
     _isLoading = false;
@@ -334,10 +333,6 @@ class DashboardProvider extends ChangeNotifier {
     _activityFeed.sort(
         (a, b) => (b['time'] as DateTime).compareTo(a['time'] as DateTime));
     _activityFeed = _activityFeed.take(6).toList();
-
-    if (_activityFeed.isEmpty) {
-      _activityFeed = _mockActivityFeed(now);
-    }
   }
 
   void _buildVolunteerGrowthChart(
@@ -388,16 +383,6 @@ class DashboardProvider extends ChangeNotifier {
         'count': count,
       });
     }
-
-    // If all zero (no join dates in DB), fallback to mock
-    final total = _monthlyVolunteers.fold<int>(
-        0, (sum, m) => sum + ((m['count'] as int?) ?? 0));
-    if (total == 0) {
-      final mockBase = [168, 175, 182, 190, 200, 210, 218, 226, 234];
-      for (int i = 0; i < 9; i++) {
-        _monthlyVolunteers[i]['count'] = mockBase[i];
-      }
-    }
   }
 
   void _buildCategoryDistribution(List<Map<String, dynamic>> events) {
@@ -419,13 +404,7 @@ class DashboardProvider extends ChangeNotifier {
     }
 
     if (catMap.isEmpty) {
-      _categoryDistribution = [
-        {'label': 'Community', 'value': 35.0, 'color': 0xFF6366F1},
-        {'label': 'Education', 'value': 25.0, 'color': 0xFF22D3EE},
-        {'label': 'Healthcare', 'value': 20.0, 'color': 0xFF10B981},
-        {'label': 'Environment', 'value': 12.0, 'color': 0xFFF59E0B},
-        {'label': 'Other', 'value': 8.0, 'color': 0xFFEC4899},
-      ];
+      _categoryDistribution = [];
       return;
     }
 
@@ -474,104 +453,26 @@ class DashboardProvider extends ChangeNotifier {
         'absent': absent,
       });
     }
-
-    // If all zero (no attendance records), use mock
-    final hasAny = _weeklyAttendance.any((w) =>
-        ((w['present'] as int) + (w['absent'] as int)) > 0);
-    if (!hasAny) {
-      _weeklyAttendance = [
-        {'day': 'Mon', 'present': 18, 'absent': 4},
-        {'day': 'Tue', 'present': 22, 'absent': 3},
-        {'day': 'Wed', 'present': 15, 'absent': 6},
-        {'day': 'Thu', 'present': 28, 'absent': 2},
-        {'day': 'Fri', 'present': 20, 'absent': 5},
-        {'day': 'Sat', 'present': 12, 'absent': 3},
-        {'day': 'Sun', 'present': 8, 'absent': 2},
-      ];
-    }
   }
 
-  // ── Mock Fallback ──────────────────────────────────────────────────────────
+  // ── Clean Empty State ──────────────────────────────────────────────────────
 
-  List<Map<String, dynamic>> _mockActivityFeed(DateTime now) => [
-        {
-          'type': 'volunteer_joined',
-          'title': 'Sarah Johnson joined',
-          'subtitle': 'sarah.j@email.com',
-          'time': now.subtract(const Duration(hours: 1)),
-        },
-        {
-          'type': 'event_created',
-          'title': 'Event: Community Cleanup',
-          'subtitle': 'Riverside Park',
-          'time': now.subtract(const Duration(hours: 3)),
-        },
-        {
-          'type': 'attendance_logged',
-          'title': 'Marcus Lee checked in',
-          'subtitle': 'Housing Build Drive',
-          'time': now.subtract(const Duration(hours: 5)),
-        },
-        {
-          'type': 'volunteer_joined',
-          'title': 'Priya Patel joined',
-          'subtitle': 'priya.p@email.com',
-          'time': now.subtract(const Duration(hours: 8)),
-        },
-        {
-          'type': 'event_created',
-          'title': 'Event: Food Pantry',
-          'subtitle': 'Downtown Community Center',
-          'time': now.subtract(const Duration(hours: 12)),
-        },
-        {
-          'type': 'milestone',
-          'title': '1,000 volunteer hours logged',
-          'subtitle': 'All-time milestone reached!',
-          'time': now.subtract(const Duration(days: 1)),
-        },
-      ];
-
-  void _useMockData() {
-    final now = DateTime.now();
+  void _useEmptyData() {
     _stats = const DashboardStats(
-      totalVolunteers: 48,
-      activeVolunteers: 36,
-      totalEvents: 12,
-      upcomingEvents: 4,
-      hoursThisMonth: 1240,
-      hoursLastMonth: 1145,
-      attendanceRate: 87.5,
-      attendanceRateLastMonth: 85.2,
-      volunteerGrowthPercent: 18.3,
-      newVolunteersThisMonth: 7,
+      totalVolunteers: 0,
+      activeVolunteers: 0,
+      totalEvents: 0,
+      upcomingEvents: 0,
+      hoursThisMonth: 0,
+      hoursLastMonth: 0,
+      attendanceRate: 0.0,
+      attendanceRateLastMonth: 0.0,
+      newVolunteersThisMonth: 0,
+      volunteerGrowthPercent: 0.0,
     );
-    _activityFeed = _mockActivityFeed(now);
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    final mockCounts = [168, 175, 182, 190, 200, 210, 218, 226, 234];
-    _monthlyVolunteers = List.generate(9, (i) {
-      final date = DateTime(now.year, now.month - 8 + i, 1);
-      int mo = date.month;
-      return {'month': months[mo - 1], 'count': mockCounts[i]};
-    });
-    _categoryDistribution = [
-      {'label': 'Community', 'value': 35.0, 'color': 0xFF6366F1},
-      {'label': 'Education', 'value': 25.0, 'color': 0xFF22D3EE},
-      {'label': 'Healthcare', 'value': 20.0, 'color': 0xFF10B981},
-      {'label': 'Environment', 'value': 12.0, 'color': 0xFFF59E0B},
-      {'label': 'Other', 'value': 8.0, 'color': 0xFFEC4899},
-    ];
-    _weeklyAttendance = [
-      {'day': 'Mon', 'present': 18, 'absent': 4},
-      {'day': 'Tue', 'present': 22, 'absent': 3},
-      {'day': 'Wed', 'present': 15, 'absent': 6},
-      {'day': 'Thu', 'present': 28, 'absent': 2},
-      {'day': 'Fri', 'present': 20, 'absent': 5},
-      {'day': 'Sat', 'present': 12, 'absent': 3},
-      {'day': 'Sun', 'present': 8, 'absent': 2},
-    ];
+    _activityFeed = [];
+    _monthlyVolunteers = [];
+    _categoryDistribution = [];
+    _weeklyAttendance = [];
   }
 }

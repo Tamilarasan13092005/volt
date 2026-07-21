@@ -4,9 +4,6 @@ import '../models/user.dart';
 
 enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
 
-// ── Demo credentials (always work, no Supabase account needed) ────────────
-const _demoEmail = 'alex@volunteersync.io';
-const _demoPassword = 'password123';
 
 class AuthProvider extends ChangeNotifier {
   AuthStatus _status = AuthStatus.initial;
@@ -80,24 +77,6 @@ class AuthProvider extends ChangeNotifier {
     _status = AuthStatus.loading;
     _errorMessage = null;
     notifyListeners();
-
-    // ── Demo login — always succeeds without Supabase account ────────────
-    if (email.trim().toLowerCase() == _demoEmail &&
-        password == _demoPassword) {
-      _user = AppUser(
-        id: 'demo-user-001',
-        name: 'Alex Demo',
-        email: _demoEmail,
-        role: 'Admin',
-        organization: 'VolunteerSync',
-        createdAt: DateTime(2024, 1, 15),
-        isVerified: true,
-      );
-      _status = AuthStatus.authenticated;
-      notifyListeners();
-      return true;
-    }
-
     // ── Real Supabase login ───────────────────────────────────────────────
     try {
       final response = await _supabase.auth.signInWithPassword(
