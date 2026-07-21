@@ -20,12 +20,22 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  late DashboardProvider _dashProvider;
+
   @override
   void initState() {
     super.initState();
+    _dashProvider = context.read<DashboardProvider>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DashboardProvider>().loadDashboard();
+      _dashProvider.initRealtime();
     });
+  }
+
+  @override
+  void dispose() {
+    // Cancel realtime channels without destroying the shared provider
+    _dashProvider.cleanup();
+    super.dispose();
   }
 
   @override
@@ -61,12 +71,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(
-                                    'Dashboard Overview',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineMedium
-                                        ?.copyWith(fontWeight: FontWeight.w800),
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'Dashboard Overview',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineMedium
+                                            ?.copyWith(
+                                                fontWeight: FontWeight.w800),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      _LiveIndicator(
+                                          connected: dash.isRealtimeConnected),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -100,7 +119,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ],
                         ).animate().fadeIn(delay: 100.ms),
 
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 16),
+
+                        // Error banner
+                        if (dash.error != null)
+                          _ErrorBanner(message: dash.error!)
+                              .animate()
+                              .fadeIn()
+                              .slideY(begin: -0.1),
+
+                        if (dash.error != null) const SizedBox(height: 16),
 
                         // Stat cards
                         if (dash.stats != null) ...[
@@ -201,7 +229,7 @@ class _MobileStatGrid extends StatelessWidget {
         StatCard(
           label: AppStrings.hoursThisMonth,
           value: AppUtils.formatNumber(stats.hoursThisMonth),
-          change: '+8.2%',
+          change: stats.hoursChangePercent,
           icon: Icons.schedule_rounded,
           gradient: AppColors.emeraldGradient,
           animationDelay: 400,
@@ -209,7 +237,7 @@ class _MobileStatGrid extends StatelessWidget {
         StatCard(
           label: AppStrings.attendanceRate,
           value: '${stats.attendanceRate.toStringAsFixed(1)}%',
-          change: '+1.3%',
+          change: stats.attendanceChangePercent,
           icon: Icons.fact_check_rounded,
           gradient: AppColors.amberGradient,
           animationDelay: 500,
@@ -253,7 +281,7 @@ class _DesktopStatRow extends StatelessWidget {
           child: StatCard(
             label: AppStrings.hoursThisMonth,
             value: AppUtils.formatNumber(stats.hoursThisMonth),
-            change: '+8.2%',
+            change: stats.hoursChangePercent,
             icon: Icons.schedule_rounded,
             gradient: AppColors.emeraldGradient,
             animationDelay: 400,
@@ -264,7 +292,7 @@ class _DesktopStatRow extends StatelessWidget {
           child: StatCard(
             label: AppStrings.attendanceRate,
             value: '${stats.attendanceRate.toStringAsFixed(1)}%',
-            change: '+1.3%',
+            change: stats.attendanceChangePercent,
             icon: Icons.fact_check_rounded,
             gradient: AppColors.amberGradient,
             animationDelay: 500,
@@ -598,6 +626,141 @@ class _ActivityItem extends StatelessWidget {
           Text(
             AppUtils.timeAgo(item['time'] as DateTime),
             style: const TextStyle(color: AppColors.textDisabled, fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Live Indicator ────────────────────────────────────────────────────────────
+
+class _LiveIndicator extends StatefulWidget {
+  final bool connected;
+  const _LiveIndicator({required this.connected});
+
+  @override
+  State<_LiveIndicator> createState() => _LiveIndicatorState();
+}
+
+class _LiveIndicatorState extends State<_LiveIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _pulse = Tween<double>(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color =
+        widget.connected ? const Color(0xFF10B981) : const Color(0xFF6B7280);
+    return Tooltip(
+      message: widget.connected ? 'Live — real-time updates on' : 'Connecting…',
+      child: AnimatedBuilder(
+        animation: _pulse,
+        builder: (_, __) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: color.withOpacity(
+                    widget.connected ? _pulse.value : 0.4),
+                shape: BoxShape.circle,
+                boxShadow: widget.connected
+                    ? [
+                        BoxShadow(
+                          color: color.withOpacity(0.5 * _pulse.value),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        )
+                      ]
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              widget.connected ? 'Live' : 'Syncing',
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Error Banner ──────────────────────────────────────────────────────────────
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+  const _ErrorBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEF4444).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded,
+              color: Color(0xFFEF4444), size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Could not load live data. Showing last known data.',
+              style: const TextStyle(
+                color: Color(0xFFEF4444),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: () => context.read<DashboardProvider>().refresh(),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'Retry',
+                style: TextStyle(
+                  color: Color(0xFFEF4444),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           ),
         ],
       ),

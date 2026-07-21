@@ -79,7 +79,9 @@ class DashboardStats {
   final int totalEvents;
   final int upcomingEvents;
   final int hoursThisMonth;
+  final int hoursLastMonth;
   final double attendanceRate;
+  final double attendanceRateLastMonth;
   final int newVolunteersThisMonth;
   final double volunteerGrowthPercent;
 
@@ -89,8 +91,24 @@ class DashboardStats {
     required this.totalEvents,
     required this.upcomingEvents,
     required this.hoursThisMonth,
+    this.hoursLastMonth = 0,
     required this.attendanceRate,
+    this.attendanceRateLastMonth = 0,
     required this.newVolunteersThisMonth,
     required this.volunteerGrowthPercent,
   });
+
+  /// Month-over-month hours change as a formatted string e.g. "+8.2%"
+  String get hoursChangePercent {
+    if (hoursLastMonth == 0) return '--';
+    final delta = ((hoursThisMonth - hoursLastMonth) / hoursLastMonth) * 100;
+    return '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(1)}%';
+  }
+
+  /// Month-over-month attendance rate change as a formatted string e.g. "+1.3%"
+  String get attendanceChangePercent {
+    if (attendanceRateLastMonth == 0) return '--';
+    final delta = attendanceRate - attendanceRateLastMonth;
+    return '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(1)}%';
+  }
 }
