@@ -306,58 +306,93 @@ class _DesktopStatRow extends StatelessWidget {
 class _AIInsightsBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary.withOpacity(0.15),
-            AppColors.secondary.withOpacity(0.1),
+    final dash = context.watch<DashboardProvider>();
+    final stats = dash.stats;
+
+    // Generate a dynamic insight message from real DB stats
+    String insight;
+    if (stats == null) {
+      insight = 'Loading your personalized insights...';
+    } else if (stats.upcomingEvents > 0 &&
+        stats.totalVolunteers > 0 &&
+        stats.attendanceRate < 80) {
+      insight =
+          'Attendance rate is ${stats.attendanceRate.toStringAsFixed(1)}% — '
+          '${stats.upcomingEvents} upcoming event${stats.upcomingEvents > 1 ? 's' : ''} '
+          'need${stats.upcomingEvents == 1 ? 's' : ''} more volunteers. '
+          'Consider sending reminder notifications.';
+    } else if (stats.newVolunteersThisMonth > 0) {
+      insight =
+          '${stats.newVolunteersThisMonth} new volunteer${stats.newVolunteersThisMonth > 1 ? 's' : ''} '
+          'joined this month! You now have ${stats.totalVolunteers} volunteers '
+          'with ${stats.attendanceRate.toStringAsFixed(1)}% attendance rate.';
+    } else if (stats.upcomingEvents > 0) {
+      insight =
+          'You have ${stats.upcomingEvents} upcoming event${stats.upcomingEvents > 1 ? 's' : ''} '
+          'across ${stats.totalEvents} total. '
+          '${stats.activeVolunteers} active volunteers are ready to be assigned.';
+    } else {
+      insight =
+          '${stats.totalVolunteers} total volunteers with '
+          '${stats.attendanceRate.toStringAsFixed(1)}% attendance rate. '
+          '${stats.hoursThisMonth} hours logged — great engagement this month!';
+    }
+
+    return GestureDetector(
+      onTap: () => context.go(AppRouter.aiChat),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.primary.withOpacity(0.15),
+              AppColors.secondary.withOpacity(0.1),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.auto_awesome_rounded,
+                  color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Volt AI Insight',
+                      style: TextStyle(
+                        color: AppColors.primaryLight,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      )),
+                  const SizedBox(height: 3),
+                  Text(
+                    insight,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Icon(Icons.arrow_forward_ios_rounded,
+                color: AppColors.textMuted, size: 14),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.auto_awesome_rounded,
-                color: Colors.white, size: 20),
-          ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Volt AI Insight',
-                    style: TextStyle(
-                      color: AppColors.primaryLight,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    )),
-                SizedBox(height: 3),
-                Text(
-                  'The Housing Build event needs 8 more volunteers. 12 available matches found based on skills and availability.',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          const Icon(Icons.arrow_forward_ios_rounded,
-              color: AppColors.textMuted, size: 14),
-        ],
       ),
     );
   }
