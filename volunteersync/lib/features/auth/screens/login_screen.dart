@@ -323,6 +323,65 @@ class _LoginScreenState extends State<LoginScreen> {
                             isLoading: auth.status == AuthStatus.loading,
                             width: double.infinity,
                           ).animate().fadeIn(delay: 500.ms),
+
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(child: Divider(color: AppColors.border.withOpacity(0.5), thickness: 1)),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                child: Text('OR', style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                              ),
+                              Expanded(child: Divider(color: AppColors.border.withOpacity(0.5), thickness: 1)),
+                            ],
+                          ).animate().fadeIn(delay: 550.ms),
+                          const SizedBox(height: 20),
+
+                          OutlinedButton(
+                            key: const Key('google_signin_button'),
+                            onPressed: () async {
+                              await auth.signInWithGoogle();
+                            },
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 48),
+                              side: BorderSide(color: AppColors.border.withOpacity(0.8)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              backgroundColor: AppColors.surfaceElevated,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 18,
+                                  height: 18,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: const Text(
+                                    'G',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 11,
+                                      fontFamily: 'sans-serif',
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Continue with Google',
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ).animate().fadeIn(delay: 600.ms),
                         ],
                       ),
                     ),

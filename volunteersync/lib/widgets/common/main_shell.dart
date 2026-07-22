@@ -28,11 +28,7 @@ class _MainShellState extends State<MainShell> {
         label: 'Volunteers',
         route: AppRouter.volunteers),
     const _NavItem(
-        icon: Icons.event_rounded, label: 'Events', route: AppRouter.events),
-    const _NavItem(
-        icon: Icons.fact_check_rounded,
-        label: 'Attendance',
-        route: AppRouter.attendance),
+        icon: Icons.event_rounded, label: 'Volunteer Activities', route: AppRouter.events),
     const _NavItem(
         icon: Icons.analytics_rounded,
         label: 'Reports',
@@ -51,9 +47,18 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final isMobile = AppUtils.isMobile(context);
+    final auth = context.watch<AuthProvider>();
+    final role = auth.user?.role ?? 'volunteer';
+
+    final filteredNavItems = _navItems.where((item) {
+      if (role == 'volunteer') {
+        return item.route != AppRouter.volunteers && item.route != AppRouter.reports;
+      }
+      return true;
+    }).toList();
 
     if (isMobile) {
-      return _MobileShell(navItems: _navItems, child: widget.child);
+      return _MobileShell(navItems: filteredNavItems, child: widget.child);
     }
 
     return Scaffold(
@@ -62,7 +67,7 @@ class _MainShellState extends State<MainShell> {
         children: [
           _Sidebar(
             expanded: _sidebarExpanded,
-            navItems: _navItems,
+            navItems: filteredNavItems,
             onToggle: () =>
                 setState(() => _sidebarExpanded = !_sidebarExpanded),
           ),

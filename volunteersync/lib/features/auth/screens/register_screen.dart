@@ -23,6 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _obscure = true;
   bool _agreed = false;
+  String _selectedRole = 'volunteer';
 
   @override
   void dispose() {
@@ -43,8 +44,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
     final auth = context.read<AuthProvider>();
-    final ok = await auth.register(_nameCtrl.text.trim(),
-        _emailCtrl.text.trim(), _passCtrl.text, _orgCtrl.text.trim());
+    final ok = await auth.register(
+      _nameCtrl.text.trim(),
+      _emailCtrl.text.trim(),
+      _passCtrl.text,
+      _orgCtrl.text.trim(),
+      role: _selectedRole,
+    );
     if (mounted && ok) {
       await Future.delayed(const Duration(milliseconds: 300));
       if (mounted) context.go(AppRouter.dashboard);
@@ -145,6 +151,87 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ? 'Enter your name'
                               : null,
                         ).animate().fadeIn(delay: 350.ms),
+
+                        const SizedBox(height: 14),
+
+                        // Role Selection Segmented Control
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Register as a:',
+                              style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceElevated,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              padding: const EdgeInsets.all(4),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () => setState(() => _selectedRole = 'volunteer'),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 200),
+                                        decoration: BoxDecoration(
+                                          color: _selectedRole == 'volunteer'
+                                              ? AppColors.primary
+                                              : Colors.transparent,
+                                          borderRadius: BorderRadius.circular(9),
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          'Volunteer',
+                                          style: TextStyle(
+                                            color: _selectedRole == 'volunteer'
+                                                ? Colors.white
+                                                : AppColors.textSecondary,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () => setState(() => _selectedRole = 'organizer'),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 200),
+                                        decoration: BoxDecoration(
+                                          color: _selectedRole == 'organizer'
+                                              ? AppColors.primary
+                                              : Colors.transparent,
+                                          borderRadius: BorderRadius.circular(9),
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          'Organizer',
+                                          style: TextStyle(
+                                            color: _selectedRole == 'organizer'
+                                                ? Colors.white
+                                                : AppColors.textSecondary,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ).animate().fadeIn(delay: 380.ms),
 
                         const SizedBox(height: 14),
 
@@ -257,6 +344,65 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           width: double.infinity,
                           icon: Icons.rocket_launch_rounded,
                         ).animate().fadeIn(delay: 600.ms),
+
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Expanded(child: Divider(color: AppColors.border.withOpacity(0.5), thickness: 1)),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: Text('OR', style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                            ),
+                            Expanded(child: Divider(color: AppColors.border.withOpacity(0.5), thickness: 1)),
+                          ],
+                        ).animate().fadeIn(delay: 650.ms),
+                        const SizedBox(height: 20),
+
+                        OutlinedButton(
+                          key: const Key('google_signup_button'),
+                          onPressed: () async {
+                            await auth.signInWithGoogle();
+                          },
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 48),
+                            side: BorderSide(color: AppColors.border.withOpacity(0.8)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            backgroundColor: AppColors.surfaceElevated,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 18,
+                                height: 18,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                alignment: Alignment.center,
+                                child: const Text(
+                                  'G',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 11,
+                                    fontFamily: 'sans-serif',
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                  'Continue with Google',
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ).animate().fadeIn(delay: 700.ms),
                       ],
                     ),
                   ),

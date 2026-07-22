@@ -8,6 +8,8 @@ class DashboardProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   bool _isRealtimeConnected = false;
+  String? _role;
+  String? _userId;
 
   List<Map<String, dynamic>> _activityFeed = [];
   List<Map<String, dynamic>> _monthlyVolunteers = [];
@@ -36,7 +38,9 @@ class DashboardProvider extends ChangeNotifier {
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
-  Future<void> initRealtime() async {
+  Future<void> initRealtime({String? role, String? userId}) async {
+    _role = role;
+    _userId = userId;
     await loadDashboard();
     _subscribeRealtime();
   }
@@ -120,6 +124,63 @@ class DashboardProvider extends ChangeNotifier {
 
     try {
       final now = DateTime.now();
+
+      if (_role == 'volunteer') {
+        final userAttendanceRes = await _supabase
+            .from('attendance')
+            .select()
+            .eq('volunteer_id', _userId ?? '');
+        final userAttendance = List<Map<String, dynamic>>.from(userAttendanceRes);
+
+        final requestedCount = userAttendance.where((a) => a['status'] == 'requested').length;
+        final joinedCount = userAttendance.where((a) => a['status'] == 'joined').length;
+        final presentCount = userAttendance.where((a) => a['status'] == 'present' || a['status'] == 'late').length;
+        final totalCompleted = userAttendance.where((a) => ['present', 'absent', 'late', 'excused'].contains(a['status'])).length;
+
+        int totalHours = 0;
+        for (final a in userAttendance) {
+          final h = a['hours_logged'];
+          if (h is num) totalHours += h.toInt();
+        }
+
+        double myAttendanceRate = totalCompleted > 0 ? (presentCount / totalCompleted) * 100 : 100.0;
+
+        _stats = DashboardStats(
+          totalVolunteers: requestedCount,
+          activeVolunteers: joinedCount,
+          totalEvents: userAttendance.length,
+          upcomingEvents: joinedCount + requestedCount,
+          hoursThisMonth: totalHours,
+          attendanceRate: myAttendanceRate,
+          newVolunteersThisMonth: 0,
+          volunteerGrowthPercent: 0,
+        );
+
+        _activityFeed = [];
+        for (final a in userAttendance.take(5)) {
+          final rawTime = a['created_at'] ?? a['checked_in_at'];
+          final time = rawTime != null
+              ? (DateTime.tryParse(rawTime.toString()) ?? now)
+              : now;
+          final statusStr = a['status']?.toString().toUpperCase() ?? '';
+          _activityFeed.add({
+            'type': 'attendance_logged',
+            'title': 'Registered for: ${(a['event_title'] as String?) ?? 'Event'}',
+            'subtitle': 'Status: $statusStr',
+            'time': time,
+          });
+        }
+        _activityFeed.sort(
+            (a, b) => (b['time'] as DateTime).compareTo(a['time'] as DateTime));
+
+        _monthlyVolunteers = [];
+        _categoryDistribution = [];
+        _weeklyAttendance = [];
+
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
 
       // ── 1. Volunteers ──────────────────────────────────────────────────────
       // Columns: id, full_name, email, status, joined_date, created_at,

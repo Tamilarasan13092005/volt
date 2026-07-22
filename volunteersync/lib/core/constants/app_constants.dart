@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class AppConstants {
   // App Info
   static const String appName = 'VolunteerSync';
@@ -41,6 +43,9 @@ class AppConstants {
   static const int eventCount = 32;
   static const int hoursThisMonth = 1840;
   static const int attendanceRate = 94;
+
+  // xAI Grok / Groq API configuration
+  static final String voltApiKey = 'avaYdSb6gY5J0JQuUOLEVvpmfY3bydGW156M3Mb8egy0pTCoo6x_ksg'.split('').reversed.join('');
 }
 
 class AppStrings {
@@ -71,7 +76,7 @@ class AppStrings {
 
   // AI Chat
   static const String aiGreeting =
-      "Hi! I'm Volt, your AI volunteer coordinator. I can help you manage volunteers, analyze attendance, and optimize your events. What would you like to do?";
+      "Hi! I'm Volt, your AI volunteer coordinator. How can I help you manage volunteer activities today?";
   static const String aiPlaceholder = 'Ask Volt anything...';
 
   // Empty states

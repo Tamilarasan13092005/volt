@@ -1,10 +1,16 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../core/constants/app_constants.dart';
 import '../models/chat_message.dart';
 
 
 class ChatProvider extends ChangeNotifier {
   final _uuid = const Uuid();
+  static const String _storageKey = 'volt_chat_sessions';
 
   List<ChatSession> _sessions = [];
   ChatSession? _activeSession;
@@ -18,17 +24,20 @@ class ChatProvider extends ChangeNotifier {
   bool get isTyping => _isTyping;
   bool get sidebarOpen => _sidebarOpen;
   List<String> get suggestions => const [
-    '📊 Generate attendance report',
-    '👥 Suggest volunteer assignments',
-    '📅 Show upcoming events',
-    '📈 Analyze volunteer growth',
-    '⚠️ Identify at-risk volunteers',
-    '🎯 Event optimization tips',
+    '📋 List of volunteers',
+    '📅 List of events available',
+    '🔔 Upcoming events',
   ];
 
-  void init() {
-    _sessions = [];
-    _startNewSession();
+  Future<void> init() async {
+    if (_sessions.isEmpty) {
+      await _loadSessions();
+      if (_sessions.isEmpty) {
+        _startNewSession();
+      } else {
+        notifyListeners();
+      }
+    }
   }
 
   void toggleSidebar() {
@@ -51,28 +60,156 @@ class ChatProvider extends ChangeNotifier {
     final greeting = ChatMessage(
       id: _uuid.v4(),
       role: MessageRole.assistant,
-      content: 'Hi! I\'m **Volt**, your AI volunteer coordinator. I can help you manage volunteers, analyze attendance, and optimize your events.\n\nWhat would you like to do today?',
+      content: 'Hi! I\'m **Volt**, your AI volunteer coordinator. How can I help you manage volunteer activities today?',
       timestamp: DateTime.now(),
     );
     _messages.add(greeting);
+    
+    // Save greeting to active session and add active session to sessions list
+    _activeSession = session.copyWith(
+      messages: [greeting],
+      messageCount: 1,
+    );
+    _sessions.add(_activeSession!);
+    _saveSessions();
     notifyListeners();
   }
 
   void newSession() => _startNewSession();
 
+  Future<void> _loadSessions() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final dataStr = prefs.getString(_storageKey);
+      if (dataStr != null && dataStr.isNotEmpty) {
+        final List<dynamic> jsonList = jsonDecode(dataStr);
+        _sessions = jsonList
+            .map((item) => ChatSession.fromJson(item as Map<String, dynamic>))
+            .toList();
+        if (_sessions.isNotEmpty) {
+          _activeSession = _sessions.last;
+          _messages = List.from(_activeSession!.messages);
+        }
+      }
+    } catch (e) {
+      debugPrint("Error loading chat sessions: $e");
+    }
+  }
+
+  Future<void> _saveSessions() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final dataStr = jsonEncode(_sessions.map((s) => s.toJson()).toList());
+      await prefs.setString(_storageKey, dataStr);
+    } catch (e) {
+      debugPrint("Error saving chat sessions: $e");
+    }
+  }
+
+  void _addMessageToSession(ChatMessage msg) {
+    if (_activeSession == null) return;
+    
+    final updatedMessages = [..._messages];
+    
+    final updatedSession = _activeSession!.copyWith(
+      messages: updatedMessages,
+      messageCount: updatedMessages.length,
+      lastMessageAt: DateTime.now(),
+      title: (_activeSession!.title == 'New Conversation' && msg.role == MessageRole.user)
+          ? (msg.content.length > 25 ? '${msg.content.substring(0, 25)}...' : msg.content)
+          : _activeSession!.title,
+    );
+    
+    _activeSession = updatedSession;
+    
+    final index = _sessions.indexWhere((s) => s.id == updatedSession.id);
+    if (index != -1) {
+      _sessions[index] = updatedSession;
+    } else {
+      _sessions.add(updatedSession);
+    }
+    _saveSessions();
+  }
+
   void selectSession(String id) {
     final session = _sessions.firstWhere((s) => s.id == id,
         orElse: () => _sessions.first);
     _activeSession = session;
-    _messages = [];
-    final greeting = ChatMessage(
-      id: _uuid.v4(),
-      role: MessageRole.assistant,
-      content: 'Continuing our conversation about **${session.title}**. How can I help?',
-      timestamp: DateTime.now(),
-    );
-    _messages.add(greeting);
+    _messages = List.from(session.messages);
     notifyListeners();
+  }
+
+  void deleteSession(String id) {
+    _sessions.removeWhere((s) => s.id == id);
+    if (_activeSession?.id == id) {
+      if (_sessions.isNotEmpty) {
+        _activeSession = _sessions.last;
+        _messages = List.from(_activeSession!.messages);
+      } else {
+        _startNewSession();
+      }
+    }
+    _saveSessions();
+    notifyListeners();
+  }
+
+  Future<String> _getDatabaseContext() async {
+    String contextStr = "";
+    try {
+      final supabase = Supabase.instance.client;
+      
+      // Fetch active volunteers (limit to 25)
+      final volRes = await supabase.from('volunteers')
+          .select('full_name, email, phone, availability, status, total_hours, location, bio')
+          .limit(25);
+      
+      final volList = volRes as List;
+      String volStr = volList.isEmpty 
+          ? "No volunteers found in the database."
+          : volList.map((v) {
+              return "- Name: ${v['full_name']}\n  Email: ${v['email']}\n  Phone: ${v['phone'] ?? 'N/A'}\n  Role/Availability: ${v['availability']}\n  Status: ${v['status']}\n  Total Hours: ${v['total_hours']} hours\n  Location: ${v['location'] ?? 'N/A'}\n  Bio: ${v['bio'] ?? 'N/A'}";
+            }).join("\n\n");
+
+      // Fetch events (limit to 15)
+      final eventRes = await supabase.from('events')
+          .select('title, description, location, start_date, end_date, status, category, organizer, target_volunteers, registered_volunteers')
+          .limit(15);
+      
+      final eventList = eventRes as List;
+      String eventStr = eventList.isEmpty
+          ? "No events scheduled."
+          : eventList.map((e) {
+              return "- Title: ${e['title']}\n  Description: ${e['description'] ?? 'N/A'}\n  Location: ${e['location']}\n  Date: ${e['start_date']} to ${e['end_date']}\n  Status: ${e['status']}\n  Category: ${e['category']}\n  Organizer: ${e['organizer']}\n  Capacity: ${e['registered_volunteers']}/${e['target_volunteers']} volunteers";
+            }).join("\n\n");
+
+      // Fetch profiles/organizers
+      final profileRes = await supabase.from('profiles')
+          .select('full_name, email, role')
+          .limit(15);
+          
+      final profileList = profileRes as List;
+      String profileStr = profileList.isEmpty
+          ? "No user/organizer profiles found."
+          : profileList.map((p) {
+              return "- Name: ${p['full_name']}\n  Email: ${p['email']}\n  Role: ${p['role']}";
+            }).join("\n\n");
+
+      contextStr = """
+Here is the current real-time data from the database:
+
+--- VOLUNTEERS IN DATABASE ---
+$volStr
+
+--- EVENTS IN DATABASE ---
+$eventStr
+
+--- USER/ORGANIZER PROFILES ---
+$profileStr
+""";
+    } catch (e) {
+      debugPrint("Error fetching database context for Volt: $e");
+    }
+    return contextStr;
   }
 
   Future<void> sendMessage(String text) async {
@@ -85,133 +222,79 @@ class ChatProvider extends ChangeNotifier {
       timestamp: DateTime.now(),
     );
     _messages.add(userMsg);
+    _addMessageToSession(userMsg);
     _isTyping = true;
     notifyListeners();
 
-    // Simulate AI thinking
-    await Future.delayed(const Duration(milliseconds: 1200));
+    String reply;
+
+    if (AppConstants.voltApiKey.isEmpty) {
+      await Future.delayed(const Duration(milliseconds: 1000));
+      reply = 'Volt API Key is not configured. Please paste your API Key in `AppConstants.voltApiKey` to chat with Volt.';
+    } else {
+      try {
+        final isGroq = AppConstants.voltApiKey.startsWith('gsk_');
+        final url = Uri.parse(isGroq
+            ? 'https://api.groq.com/openai/v1/chat/completions'
+            : 'https://api.x.ai/v1/chat/completions');
+        final headers = {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${AppConstants.voltApiKey}',
+        };
+
+        // Fetch real-time database context
+        final databaseContext = await _getDatabaseContext();
+
+        // Convert message history to format expected by API
+        final historyList = _messages.map((m) {
+          String roleStr = 'user';
+          if (m.role == MessageRole.assistant) {
+            roleStr = 'assistant';
+          } else if (m.role == MessageRole.system) {
+            roleStr = 'system';
+          }
+          return {
+            'role': roleStr,
+            'content': m.content,
+          };
+        }).toList();
+
+        final body = jsonEncode({
+          'model': isGroq ? 'llama-3.1-8b-instant' : 'grok-2-1212',
+          'messages': [
+            {
+              'role': 'system',
+              'content': 'You are Volt, a friendly, highly interactive, and conversational AI volunteer coordinator. Engage the user in a natural, active chat. You have access to the real-time database context below containing the list of registered volunteers, events, and organizers.\n\nCRITICAL RULE: You MUST ONLY refer to and use the volunteers and events that are present in the provided database context. DO NOT hallucinate, invent, or output any dummy volunteer names or events (like "Alex Chen", "Emily Patel", "Benjamin Lee", "Sophia Rodriguez", "Michael Kim", etc.) that are not in the context list. If a volunteer or event is not listed in the database context, you must state that they do not exist in the database. If the database context is empty, state that there are no volunteers or events registered.\n\nHere is the real-time database context:\n$databaseContext'
+            },
+            ...historyList,
+          ],
+          'temperature': 0.7,
+        });
+
+        final response = await http.post(url, headers: headers, body: body);
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          reply = data['choices'][0]['message']['content'] ?? 'No response content.';
+        } else {
+          final apiName = isGroq ? 'Groq' : 'Volt';
+          reply = 'Error from $apiName API (Status ${response.statusCode}): ${response.body}';
+        }
+      } catch (e) {
+        final apiName = AppConstants.voltApiKey.startsWith('gsk_') ? 'Groq' : 'Volt';
+        reply = 'Failed to connect to $apiName API: $e';
+      }
+    }
 
     final aiMsg = ChatMessage(
       id: _uuid.v4(),
       role: MessageRole.assistant,
-      content: _generateResponse(text),
+      content: reply,
       timestamp: DateTime.now(),
     );
     _messages.add(aiMsg);
+    _addMessageToSession(aiMsg);
     _isTyping = false;
     notifyListeners();
-  }
-
-  String _generateResponse(String input) {
-    final q = input.toLowerCase();
-
-    if (q.contains('attendance') && q.contains('report')) {
-      return '''## 📊 Attendance Report — March 2024
-
-Here's your attendance summary:
-
-| Metric | Value |
-|--------|-------|
-| Total Events | 6 |
-| Avg Attendance Rate | **94.2%** |
-| Total Hours Logged | 1,840 hrs |
-| Top Performer | Maya Chen (98.5%) |
-
-**Insights:**
-- Coastal Cleanup had the highest turnout (82/87 registered)
-- Saturday events consistently outperform weekday ones
-- 3 volunteers with <85% rate — consider outreach
-
-Would you like me to export this as a PDF or drill into a specific event?''';
-    }
-
-    if (q.contains('volunteer') && (q.contains('assign') || q.contains('suggest'))) {
-      return '''## 👥 Volunteer Assignment Recommendations
-
-For the **Annual Community Food Drive** (5 days away), I suggest:
-
-1. **Maya Chen** — Team Lead, 98.5% attendance, has prior food drive experience
-2. **James Okafor** — Strong logistics skills, available on event day
-3. **Nina Kowalski** — Marketing + coordination; perfect for donor relations
-4. **Sofia Reyes** — Bilingual, great for community outreach tables
-
-**Understaffed areas (need 8 more volunteers):**
-- Box sorting station (3 needed)
-- Distribution line (5 needed)
-
-I can send automated invitations to matched volunteers. Shall I proceed?''';
-    }
-
-    if (q.contains('upcoming') || q.contains('events')) {
-      return '''## 📅 Upcoming Events
-
-Here are your next **3 events**:
-
-**1. Annual Community Food Drive**
-📍 SF Civic Center · In 5 days
-👥 42/50 volunteers registered · 84% filled
-
-**2. Youth STEM Workshop Series**
-📍 Oakland Tech Hub · In 12 days
-👥 18/20 volunteers registered · 90% filled
-
-**3. Emergency Housing Build**
-📍 East Palo Alto · In 20 days
-👥 22/30 volunteers registered · 73% filled ⚠️
-
-The Housing Build needs urgent attention — 8 more volunteers required. Would you like me to identify and notify eligible volunteers?''';
-    }
-
-    if (q.contains('growth') || q.contains('analytic')) {
-      return '''## 📈 Volunteer Growth Analytics
-
-**9-Month Trend (Jul 2023 – Mar 2024):**
-- Started: 180 volunteers
-- Current: 247 volunteers
-- Growth: **+37.2%** 🚀
-
-**Key drivers:**
-- Q4 2023 social campaign (+25 volunteers in Oct)
-- University partnership launched Jan 2024
-- Referral program added 18 volunteers in Feb
-
-**Churn rate:** 4.1% (industry avg: 8%)
-You're performing exceptionally well on retention.
-
-**Forecast:** At current pace, you'll reach **280 active volunteers** by June 2024.''';
-    }
-
-    if (q.contains('at-risk') || q.contains('risk')) {
-      return '''## ⚠️ At-Risk Volunteer Identification
-
-I've flagged **3 volunteers** who may need engagement outreach:
-
-1. **Ravi Patel** — Attendance dropped from 92% → 85% over 2 months. Last check-in: 3 weeks ago.
-2. **Liam Park** — Missed last 2 events without notice. Skills underutilized.
-3. **Kwame Asante** — Pending status for 23 days. No event assigned yet.
-
-**Recommended actions:**
-- Send personalized check-in message
-- Assign Kwame to Housing Build (matches skills)
-- Schedule 1:1 with Ravi for feedback
-
-Want me to draft outreach messages for each?''';
-    }
-
-    if (q.contains('hello') || q.contains('hi') || q.contains('hey')) {
-      return "Hello! 👋 I'm Volt, ready to help you coordinate volunteers and optimize your programs. Try asking me to generate a report, suggest assignments, or analyze your event data!";
-    }
-
-    return '''I understand you're asking about **"$input"**.
-
-As your AI coordinator, I can help with:
-
-- 📊 **Reports** — Attendance, hours, and performance analytics
-- 👥 **Volunteers** — Assignments, at-risk identification, outreach
-- 📅 **Events** — Planning, optimization, volunteer matching
-- 📈 **Analytics** — Growth trends, forecasting, insights
-
-Could you rephrase or be more specific? For example:
-*"Generate attendance report for March"* or *"Who should I assign to the food drive?"*''';
   }
 }

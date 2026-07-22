@@ -5,11 +5,11 @@ import '../providers/auth_provider.dart';
 import '../features/auth/screens/landing_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
+import '../features/auth/screens/complete_profile_screen.dart';
 import '../features/auth/screens/forgot_password_screen.dart';
 import '../features/dashboard/screens/dashboard_screen.dart';
 import '../features/volunteers/screens/volunteers_screen.dart';
 import '../features/events/screens/events_screen.dart';
-import '../features/attendance/screens/attendance_screen.dart';
 import '../features/reports/screens/reports_screen.dart';
 import '../features/ai_chat/screens/ai_chat_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
@@ -23,10 +23,10 @@ class AppRouter {
   static const String dashboard = '/dashboard';
   static const String volunteers = '/volunteers';
   static const String events = '/events';
-  static const String attendance = '/attendance';
   static const String reports = '/reports';
   static const String aiChat = '/ai-chat';
   static const String settings = '/settings';
+  static const String completeProfile = '/complete-profile';
 
   static GoRouter router(BuildContext context) {
     return GoRouter(
@@ -44,13 +44,21 @@ class AppRouter {
             state.matchedLocation == forgotPassword;
 
         if (!isAuth && !isAuthRoute) return login;
-        if (isAuth && isAuthRoute) return dashboard;
+        if (isAuth) {
+          if (auth.isProfileIncomplete && state.matchedLocation != completeProfile) {
+            return completeProfile;
+          }
+          if (!auth.isProfileIncomplete && (isAuthRoute || state.matchedLocation == completeProfile)) {
+            return dashboard;
+          }
+        }
         return null;
       },
       routes: [
         GoRoute(path: landing, builder: (_, __) => const LandingScreen()),
         GoRoute(path: login, builder: (_, __) => const LoginScreen()),
         GoRoute(path: register, builder: (_, __) => const RegisterScreen()),
+        GoRoute(path: completeProfile, builder: (_, __) => const CompleteProfileScreen()),
         GoRoute(
             path: forgotPassword,
             builder: (_, __) => const ForgotPasswordScreen()),
@@ -65,9 +73,6 @@ class AppRouter {
                 builder: (_, __) => const VolunteersScreen()),
             GoRoute(
                 path: events, builder: (_, __) => const EventsScreen()),
-            GoRoute(
-                path: attendance,
-                builder: (_, __) => const AttendanceScreen()),
             GoRoute(
                 path: reports, builder: (_, __) => const ReportsScreen()),
             GoRoute(

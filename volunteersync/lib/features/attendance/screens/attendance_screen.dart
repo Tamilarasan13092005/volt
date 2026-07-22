@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/app_utils.dart';
 import '../../../models/attendance.dart';
 import '../../../providers/events_provider.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../widgets/common/common_widgets.dart';
 
 class AttendanceScreen extends StatefulWidget {
@@ -33,11 +34,15 @@ class _AttendanceScreenState extends State<AttendanceScreen>
 
   Future<void> _load() async {
     setState(() => _loading = true);
+    final auth = context.read<AuthProvider>();
+    final isVolunteer = auth.user?.role == 'volunteer';
+
     try {
-      final response = await _supabase
-          .from('attendance')
-          .select()
-          .order('created_at', ascending: false);
+      var query = _supabase.from('attendance').select();
+      if (isVolunteer) {
+        query = query.eq('volunteer_id', auth.user?.id ?? '');
+      }
+      final response = await query.order('created_at', ascending: false);
 
       _records = (response as List)
           .map<AttendanceRecord>((item) => AttendanceRecord(
@@ -100,6 +105,9 @@ class _AttendanceScreenState extends State<AttendanceScreen>
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.read<AuthProvider>();
+    final isVolunteer = auth.user?.role == 'volunteer';
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
@@ -116,22 +124,23 @@ class _AttendanceScreenState extends State<AttendanceScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Attendance',
+                          Text(isVolunteer ? 'My Attendance' : 'Attendance',
                               style: Theme.of(context)
-                                  .textTheme
-                                  .headlineMedium
-                                  ?.copyWith(fontWeight: FontWeight.w800)),
-                          const Text('Track volunteer check-ins',
-                              style: TextStyle(
+                                      .textTheme
+                                      .headlineMedium
+                                      ?.copyWith(fontWeight: FontWeight.w800)),
+                          Text(isVolunteer ? 'Track your participation and logged hours' : 'Track volunteer check-ins',
+                              style: const TextStyle(
                                   color: AppColors.textMuted, fontSize: 14)),
                         ],
                       ),
                     ),
-                    GradientButton(
-                      label: 'Check In',
-                      onPressed: () => _showCheckInDialog(context),
-                      icon: Icons.qr_code_scanner_rounded,
-                    ),
+                    if (!isVolunteer)
+                      GradientButton(
+                        label: 'Check In',
+                        onPressed: () => _showCheckInDialog(context),
+                        icon: Icons.qr_code_scanner_rounded,
+                      ),
                   ],
                 ).animate().fadeIn(delay: 100.ms),
                 const SizedBox(height: 20),

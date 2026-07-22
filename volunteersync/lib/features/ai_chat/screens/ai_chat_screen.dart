@@ -114,7 +114,10 @@ class _AiChatScreenState extends State<AiChatScreen> {
         // Messages
         Expanded(
           child: chat.messages.isEmpty
-              ? _WelcomeState(onSuggestion: _send)
+              ? _WelcomeState(
+                  onSuggestion: _send,
+                  suggestions: chat.suggestions,
+                )
               : ListView.builder(
                   controller: _scrollCtrl,
                   padding:
@@ -131,7 +134,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
         ),
 
         // Suggestion chips (show when not typing)
-        if (!chat.isTyping && chat.messages.length <= 2)
+        if (!chat.isTyping && chat.messages.length <= 2 && chat.suggestions.isNotEmpty)
           _SuggestionChips(
             suggestions: chat.suggestions,
             onTap: _send,
@@ -275,52 +278,70 @@ class _ChatSidebar extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               children: chat.sessions.map((s) {
                 final isActive = chat.activeSession?.id == s.id;
-                return GestureDetector(
-                  onTap: () => context.read<ChatProvider>().selectSession(s.id),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    margin: const EdgeInsets.only(bottom: 4),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: isActive
-                          ? AppColors.primary.withOpacity(0.12)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.chat_bubble_outline_rounded,
-                            size: 16,
-                            color: isActive
-                                ? AppColors.primary
-                                : AppColors.textMuted),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(s.title,
-                                  style: TextStyle(
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  margin: const EdgeInsets.only(bottom: 4),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppColors.primary.withOpacity(0.12)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(11),
+                          onTap: () => context.read<ChatProvider>().selectSession(s.id),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                            child: Row(
+                              children: [
+                                Icon(Icons.chat_bubble_outline_rounded,
+                                    size: 16,
                                     color: isActive
-                                        ? AppColors.textPrimary
-                                        : AppColors.textSecondary,
-                                    fontSize: 13,
-                                    fontWeight: isActive
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
+                                        ? AppColors.primary
+                                        : AppColors.textMuted),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(s.title,
+                                          style: TextStyle(
+                                            color: isActive
+                                                ? AppColors.textPrimary
+                                                : AppColors.textSecondary,
+                                            fontSize: 13,
+                                            fontWeight: isActive
+                                                ? FontWeight.w600
+                                                : FontWeight.w400,
+                                          ),
+                                          overflow: TextOverflow.ellipsis),
+                                      Text(
+                                          '${s.messageCount} messages · ${AppUtils.timeAgo(s.lastMessageAt)}',
+                                          style: const TextStyle(
+                                              color: AppColors.textDisabled,
+                                              fontSize: 10)),
+                                    ],
                                   ),
-                                  overflow: TextOverflow.ellipsis),
-                              Text(
-                                  '${s.messageCount} messages · ${AppUtils.timeAgo(s.lastMessageAt)}',
-                                  style: const TextStyle(
-                                      color: AppColors.textDisabled,
-                                      fontSize: 10)),
-                            ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded,
+                            size: 16, color: AppColors.textDisabled),
+                        hoverColor: Colors.red.withOpacity(0.1),
+                        splashRadius: 18,
+                        onPressed: () {
+                          context.read<ChatProvider>().deleteSession(s.id);
+                        },
+                      ),
+                    ],
                   ),
                 );
               }).toList(),
@@ -335,7 +356,11 @@ class _ChatSidebar extends StatelessWidget {
 // ── Welcome State ─────────────────────────────────────────────────────────
 class _WelcomeState extends StatelessWidget {
   final void Function(String) onSuggestion;
-  const _WelcomeState({required this.onSuggestion});
+  final List<String> suggestions;
+  const _WelcomeState({
+    required this.onSuggestion,
+    required this.suggestions,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -376,41 +401,38 @@ class _WelcomeState extends StatelessWidget {
               style: TextStyle(
                   color: AppColors.textMuted, fontSize: 14, height: 1.6),
             ).animate().fadeIn(delay: 300.ms),
-            const SizedBox(height: 32),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              alignment: WrapAlignment.center,
-              children: [
-                '📊 Generate attendance report',
-                '👥 Suggest volunteer assignments',
-                '📅 Show upcoming events',
-                '📈 Analyze volunteer growth',
-              ]
-                  .asMap()
-                  .entries
-                  .map((e) => GestureDetector(
-                        onTap: () => onSuggestion(e.value),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceElevated,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.border),
+            if (suggestions.isNotEmpty) ...[
+              const SizedBox(height: 32),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                alignment: WrapAlignment.center,
+                children: suggestions
+                    .asMap()
+                    .entries
+                    .map((e) => GestureDetector(
+                          onTap: () => onSuggestion(e.value),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceElevated,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Text(e.value,
+                                style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 13)),
                           ),
-                          child: Text(e.value,
-                              style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 13)),
-                        ),
-                      )
-                          .animate(
-                              delay: Duration(milliseconds: 400 + e.key * 80))
-                          .fadeIn()
-                          .slideY(begin: 0.2))
-                  .toList(),
-            ),
+                        )
+                            .animate(
+                                delay: Duration(milliseconds: 400 + e.key * 80))
+                            .fadeIn()
+                            .slideY(begin: 0.2))
+                    .toList(),
+              ),
+            ],
           ],
         ),
       ),

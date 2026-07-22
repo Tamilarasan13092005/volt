@@ -27,7 +27,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _dashProvider = context.read<DashboardProvider>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _dashProvider.initRealtime();
+      final auth = context.read<AuthProvider>();
+      _dashProvider.initRealtime(role: auth.user?.role, userId: auth.user?.id);
     });
   }
 
@@ -43,6 +44,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final dash = context.watch<DashboardProvider>();
     final user = context.read<AuthProvider>().user;
     final isMobile = AppUtils.isMobile(context);
+    final isVolunteer = user?.role == 'volunteer';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -74,17 +76,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   Row(
                                     crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
-                                      Text(
-                                        'Dashboard Overview',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .headlineMedium
-                                            ?.copyWith(
-                                                fontWeight: FontWeight.w800),
+                                      Flexible(
+                                        child: Text(
+                                          isVolunteer ? 'My Volunteer Hub' : 'Dashboard Overview',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .headlineMedium
+                                              ?.copyWith(
+                                                  fontWeight: FontWeight.w800),
+                                        ),
                                       ),
                                       const SizedBox(width: 10),
-                                      _LiveIndicator(
-                                          connected: dash.isRealtimeConnected),
+                                      if (!isVolunteer)
+                                        _LiveIndicator(
+                                            connected: dash.isRealtimeConnected),
                                     ],
                                   ),
                                 ],
@@ -133,8 +138,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         // Stat cards
                         if (dash.stats != null) ...[
                           isMobile
-                              ? _MobileStatGrid(stats: dash.stats)
-                              : _DesktopStatRow(stats: dash.stats),
+                              ? _MobileStatGrid(stats: dash.stats, isVolunteer: isVolunteer)
+                              : _DesktopStatRow(stats: dash.stats, isVolunteer: isVolunteer),
                           const SizedBox(height: 28),
                         ],
 
@@ -147,16 +152,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         const SizedBox(height: 28),
 
                         // Charts row
-                        isMobile
-                            ? _MobileChartsColumn(dash: dash)
-                            : _DesktopChartsRow(dash: dash),
+                        if (!isVolunteer) ...[
+                          isMobile
+                              ? _MobileChartsColumn(dash: dash)
+                              : _DesktopChartsRow(dash: dash),
+                          const SizedBox(height: 28),
+                        ],
 
-                        const SizedBox(height: 28),
-
-                        // Bottom section
-                        isMobile
-                            ? _MobileBottomSection(dash: dash)
-                            : _DesktopBottomSection(dash: dash),
+                        // Bottom section / feed
+                        isVolunteer
+                            ? _ActivityFeed(items: dash.activityFeed)
+                                .animate()
+                                .fadeIn(delay: 900.ms)
+                            : (isMobile
+                                ? _MobileBottomSection(dash: dash)
+                                : _DesktopBottomSection(dash: dash)),
 
                         const SizedBox(height: 32),
                       ],
@@ -169,28 +179,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildShimmer() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const ShimmerBox(width: 200, height: 28),
-          const SizedBox(height: 8),
-          const ShimmerBox(width: 140, height: 18),
-          const SizedBox(height: 28),
-          GridView.count(
-            shrinkWrap: true,
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.3,
-            physics: const NeverScrollableScrollPhysics(),
-            children: List.generate(4,
-                (_) => const ShimmerBox(width: double.infinity, height: 120)),
-          ),
-          const SizedBox(height: 24),
-          const ShimmerBox(width: double.infinity, height: 180),
-        ],
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const ShimmerBox(width: 200, height: 28),
+            const SizedBox(height: 8),
+            const ShimmerBox(width: 140, height: 18),
+            const SizedBox(height: 28),
+            GridView.count(
+              shrinkWrap: true,
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.3,
+              physics: const NeverScrollableScrollPhysics(),
+              children: List.generate(4,
+                  (_) => const ShimmerBox(width: double.infinity, height: 120)),
+            ),
+            const SizedBox(height: 24),
+            const ShimmerBox(width: double.infinity, height: 180),
+          ],
+        ),
       ),
     );
   }
@@ -198,7 +210,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 class _MobileStatGrid extends StatelessWidget {
   final dynamic stats;
-  const _MobileStatGrid({required this.stats});
+  final bool isVolunteer;
+  const _MobileStatGrid({required this.stats, this.isVolunteer = false});
 
   @override
   Widget build(BuildContext context) {
@@ -208,40 +221,42 @@ class _MobileStatGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
-      childAspectRatio: 1.2,
+      childAspectRatio: 0.8,
       children: [
         StatCard(
-          label: AppStrings.totalVolunteers,
-          value: stats.totalVolunteers.toString(),
-          change: '+${stats.volunteerGrowthPercent.toStringAsFixed(1)}%',
-          icon: Icons.people_rounded,
-          gradient: AppColors.primaryGradient,
+          label: isVolunteer ? 'Hours Logged' : AppStrings.totalVolunteers,
+          value: isVolunteer ? '${stats.hoursThisMonth} hrs' : stats.totalVolunteers.toString(),
+          change: isVolunteer ? 'Keep it up!' : '+${stats.volunteerGrowthPercent.toStringAsFixed(1)}%',
+          icon: isVolunteer ? Icons.schedule_rounded : Icons.people_rounded,
+          gradient: AppColors.emeraldGradient,
           animationDelay: 200,
         ),
         StatCard(
-          label: AppStrings.activeEvents,
-          value: stats.upcomingEvents.toString(),
-          change: '${stats.totalEvents} total',
-          icon: Icons.event_rounded,
+          label: isVolunteer ? 'Joined Events' : AppStrings.activeEvents,
+          value: isVolunteer ? stats.activeVolunteers.toString() : stats.upcomingEvents.toString(),
+          change: isVolunteer ? 'Confirmed registrations' : '${stats.totalEvents} total',
+          icon: isVolunteer ? Icons.event_available_rounded : Icons.event_rounded,
           gradient: AppColors.cyanGradient,
           animationDelay: 300,
         ),
-        StatCard(
-          label: AppStrings.hoursThisMonth,
-          value: AppUtils.formatNumber(stats.hoursThisMonth),
-          change: stats.hoursChangePercent,
-          icon: Icons.schedule_rounded,
-          gradient: AppColors.emeraldGradient,
-          animationDelay: 400,
-        ),
-        StatCard(
-          label: AppStrings.attendanceRate,
-          value: '${stats.attendanceRate.toStringAsFixed(1)}%',
-          change: stats.attendanceChangePercent,
-          icon: Icons.fact_check_rounded,
-          gradient: AppColors.amberGradient,
-          animationDelay: 500,
-        ),
+        if (isVolunteer) ...[
+          StatCard(
+            label: 'Pending Requests',
+            value: stats.totalVolunteers.toString(),
+            change: 'Awaiting organizer review',
+            icon: Icons.pending_actions_rounded,
+            gradient: AppColors.amberGradient,
+            animationDelay: 400,
+          ),
+          StatCard(
+            label: 'My Attendance',
+            value: '${stats.attendanceRate.toStringAsFixed(1)}%',
+            change: 'Participation rate',
+            icon: Icons.fact_check_rounded,
+            gradient: AppColors.primaryGradient,
+            animationDelay: 500,
+          ),
+        ],
       ],
     );
   }
@@ -249,7 +264,8 @@ class _MobileStatGrid extends StatelessWidget {
 
 class _DesktopStatRow extends StatelessWidget {
   final dynamic stats;
-  const _DesktopStatRow({required this.stats});
+  final bool isVolunteer;
+  const _DesktopStatRow({required this.stats, this.isVolunteer = false});
 
   @override
   Widget build(BuildContext context) {
@@ -257,47 +273,49 @@ class _DesktopStatRow extends StatelessWidget {
       children: [
         Expanded(
           child: StatCard(
-            label: AppStrings.totalVolunteers,
-            value: stats.totalVolunteers.toString(),
-            change: '+${stats.volunteerGrowthPercent.toStringAsFixed(1)}%',
-            icon: Icons.people_rounded,
-            gradient: AppColors.primaryGradient,
+            label: isVolunteer ? 'Hours Logged' : AppStrings.totalVolunteers,
+            value: isVolunteer ? '${stats.hoursThisMonth} hrs' : stats.totalVolunteers.toString(),
+            change: isVolunteer ? 'Keep it up!' : '+${stats.volunteerGrowthPercent.toStringAsFixed(1)}%',
+            icon: isVolunteer ? Icons.schedule_rounded : Icons.people_rounded,
+            gradient: AppColors.emeraldGradient,
             animationDelay: 200,
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: StatCard(
-            label: AppStrings.activeEvents,
-            value: stats.upcomingEvents.toString(),
-            change: '${stats.totalEvents} total',
-            icon: Icons.event_rounded,
+            label: isVolunteer ? 'Joined Events' : AppStrings.activeEvents,
+            value: isVolunteer ? stats.activeVolunteers.toString() : stats.upcomingEvents.toString(),
+            change: isVolunteer ? 'Confirmed registrations' : '${stats.totalEvents} total',
+            icon: isVolunteer ? Icons.event_available_rounded : Icons.event_rounded,
             gradient: AppColors.cyanGradient,
             animationDelay: 300,
           ),
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: StatCard(
-            label: AppStrings.hoursThisMonth,
-            value: AppUtils.formatNumber(stats.hoursThisMonth),
-            change: stats.hoursChangePercent,
-            icon: Icons.schedule_rounded,
-            gradient: AppColors.emeraldGradient,
-            animationDelay: 400,
+        if (isVolunteer) ...[
+          const SizedBox(width: 16),
+          Expanded(
+            child: StatCard(
+              label: 'Pending Requests',
+              value: stats.totalVolunteers.toString(),
+              change: 'Awaiting organizer review',
+              icon: Icons.pending_actions_rounded,
+              gradient: AppColors.amberGradient,
+              animationDelay: 400,
+            ),
           ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: StatCard(
-            label: AppStrings.attendanceRate,
-            value: '${stats.attendanceRate.toStringAsFixed(1)}%',
-            change: stats.attendanceChangePercent,
-            icon: Icons.fact_check_rounded,
-            gradient: AppColors.amberGradient,
-            animationDelay: 500,
+          const SizedBox(width: 16),
+          Expanded(
+            child: StatCard(
+              label: 'My Attendance',
+              value: '${stats.attendanceRate.toStringAsFixed(1)}%',
+              change: 'Participation rate',
+              icon: Icons.fact_check_rounded,
+              gradient: AppColors.primaryGradient,
+              animationDelay: 500,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }

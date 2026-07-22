@@ -18,8 +18,8 @@ class EventsProvider extends ChangeNotifier {
 
   List<Event> get _filtered {
     var list = _events;
-    if (_filterStatus != 'All') {
-      list = list.where((e) => e.status == _filterStatus).toList();
+    if (_filterStatus.toLowerCase() != 'all') {
+      list = list.where((e) => e.status.toLowerCase() == _filterStatus.toLowerCase()).toList();
     }
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
@@ -127,6 +127,25 @@ class EventsProvider extends ChangeNotifier {
       await loadEvents();
     } catch (e) {
       debugPrint('Error updating event: $e');
+    }
+  }
+
+  Future<void> completeEvent(String id) async {
+    try {
+      await _supabase.from('events').update({'status': 'completed'}).eq('id', id);
+      await loadEvents();
+    } catch (e) {
+      debugPrint('Error completing event: $e');
+    }
+  }
+
+  Future<void> deleteEvent(String id) async {
+    try {
+      await _supabase.from('attendance').delete().eq('event_id', id);
+      await _supabase.from('events').delete().eq('id', id);
+      await loadEvents();
+    } catch (e) {
+      debugPrint('Error deleting event: $e');
     }
   }
 

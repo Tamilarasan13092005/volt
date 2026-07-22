@@ -57,7 +57,7 @@ class _VolunteersScreenState extends State<VolunteersScreen> {
                                   .headlineMedium
                                   ?.copyWith(fontWeight: FontWeight.w800)),
                           Text(
-                              '${prov.totalCount} total · ${prov.activeCount} active',
+                              '${prov.totalCount} total',
                               style: const TextStyle(
                                   color: AppColors.textMuted, fontSize: 14)),
                         ],
@@ -76,12 +76,6 @@ class _VolunteersScreenState extends State<VolunteersScreen> {
                   controller: _searchCtrl,
                   onChanged: prov.setSearch,
                 ).animate().fadeIn(delay: 200.ms),
-                const SizedBox(height: 12),
-                FilterChipRow(
-                  options: const ['all', 'active', 'inactive', 'pending'],
-                  selected: prov.filterStatus,
-                  onSelected: prov.setFilter,
-                ).animate().fadeIn(delay: 300.ms),
                 const SizedBox(height: 16),
               ],
             ),
@@ -154,10 +148,40 @@ class _VolunteerCard extends StatelessWidget {
     required this.onTap,
   });
 
+  void _showDeleteConfirm(BuildContext context, Volunteer v) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Delete Volunteer',
+            style: TextStyle(color: AppColors.textPrimary)),
+        content: Text('Are you sure you want to delete ${v.name}?',
+            style: const TextStyle(color: AppColors.textSecondary)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppColors.textMuted)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await context.read<VolunteersProvider>().deleteVolunteer(v.id);
+              if (context.mounted) {
+                AppUtils.showSnackBar(
+                    context, 'Volunteer ${v.name} deleted successfully');
+              }
+            },
+            child: const Text('Delete',
+                style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final statusColor = AppUtils.colorFromStatus(volunteer.status);
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -175,19 +199,12 @@ class _VolunteerCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(volunteer.name,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            )),
-                      ),
-                      StatusBadge(label: volunteer.status, color: statusColor),
-                    ],
-                  ),
+                  Text(volunteer.name,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      )),
                   const SizedBox(height: 3),
                   Text(volunteer.role,
                       style: const TextStyle(
@@ -214,6 +231,11 @@ class _VolunteerCard extends StatelessWidget {
                 ],
               ),
             ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded,
+                  color: Colors.redAccent, size: 20),
+              onPressed: () => _showDeleteConfirm(context, volunteer),
+            ),
             const Icon(Icons.chevron_right_rounded,
                 color: AppColors.textMuted, size: 20),
           ],
@@ -232,8 +254,6 @@ class _VolunteerDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = AppUtils.colorFromStatus(volunteer.status);
-
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
       maxChildSize: 0.95,
@@ -284,8 +304,6 @@ class _VolunteerDetailSheet extends StatelessWidget {
                             ],
                           ),
                         ),
-                        StatusBadge(
-                            label: volunteer.status, color: statusColor),
                       ],
                     ),
 

@@ -44,6 +44,32 @@ class ChatMessage {
       metadata: metadata ?? this.metadata,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'role': role.name,
+      'content': content,
+      'timestamp': timestamp.toIso8601String(),
+      'type': type.name,
+      'isStreaming': isStreaming,
+      'suggestions': suggestions,
+      'metadata': metadata,
+    };
+  }
+
+  factory ChatMessage.fromJson(Map<String, dynamic> json) {
+    return ChatMessage(
+      id: json['id'] as String,
+      role: MessageRole.values.byName(json['role'] as String),
+      content: json['content'] as String,
+      timestamp: DateTime.parse(json['timestamp'] as String),
+      type: MessageType.values.byName(json['type'] as String),
+      isStreaming: json['isStreaming'] as bool? ?? false,
+      suggestions: (json['suggestions'] as List<dynamic>?)?.map((e) => e as String).toList(),
+      metadata: json['metadata'] as Map<String, dynamic>?,
+    );
+  }
 }
 
 class ChatSession {
@@ -78,6 +104,31 @@ class ChatSession {
       lastMessageAt: lastMessageAt ?? this.lastMessageAt,
       messages: messages ?? this.messages,
       messageCount: messageCount ?? this.messageCount,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'createdAt': createdAt.toIso8601String(),
+      'lastMessageAt': lastMessageAt.toIso8601String(),
+      'messages': messages.map((m) => m.toJson()).toList(),
+      'messageCount': messageCount,
+    };
+  }
+
+  factory ChatSession.fromJson(Map<String, dynamic> json) {
+    final msgs = (json['messages'] as List<dynamic>)
+        .map((m) => ChatMessage.fromJson(m as Map<String, dynamic>))
+        .toList();
+    return ChatSession(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      lastMessageAt: DateTime.parse(json['lastMessageAt'] as String),
+      messages: msgs,
+      messageCount: json['messageCount'] as int? ?? msgs.length,
     );
   }
 }

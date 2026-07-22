@@ -9,11 +9,13 @@ class AuthProvider extends ChangeNotifier {
   AuthStatus _status = AuthStatus.initial;
   AppUser? _user;
   String? _errorMessage;
+  bool _isProfileIncomplete = false;
 
   AuthStatus get status => _status;
   AppUser? get user => _user;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _status == AuthStatus.authenticated;
+  bool get isProfileIncomplete => _isProfileIncomplete;
 
   final _supabase = Supabase.instance.client;
 
@@ -23,34 +25,100 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ── Restore existing Supabase session on app start ─────────────────────
-  void _restoreSession() {
+  Future<void> _restoreSession() async {
     final session = _supabase.auth.currentSession;
     if (session != null) {
-      _user = _buildUser(session.user);
+      final supaUser = session.user;
+      try {
+        final res = await _supabase.from('profiles').select().eq('id', supaUser.id).maybeSingle();
+        if (res == null) {
+          _isProfileIncomplete = true;
+          _user = _buildUser(supaUser);
+        } else {
+          _isProfileIncomplete = false;
+          _user = AppUser(
+            id: res['id'] ?? supaUser.id,
+            name: res['full_name'] ?? supaUser.userMetadata?['full_name'] ?? 'User',
+            email: res['email'] ?? supaUser.email ?? '',
+            role: res['role'] ?? 'volunteer',
+            organization: res['organization'] ?? 'VolunteerSync',
+            createdAt: DateTime.tryParse(supaUser.createdAt) ?? DateTime.now(),
+            isVerified: supaUser.emailConfirmedAt != null,
+          );
+        }
+      } catch (e) {
+        debugPrint('Error restoring profile: $e');
+        _isProfileIncomplete = true;
+        _user = _buildUser(supaUser);
+      }
       _status = AuthStatus.authenticated;
     } else {
       _status = AuthStatus.unauthenticated;
     }
-    // No notifyListeners() here — called before widget tree builds
+    notifyListeners();
   }
 
   // ── Listen for Supabase auth state changes (token refresh, signout) ────
   void _initAuthListener() {
-    _supabase.auth.onAuthStateChange.listen((data) {
+    _supabase.auth.onAuthStateChange.listen((data) async {
       final event = data.event;
       final session = data.session;
 
       if (event == AuthChangeEvent.signedIn && session?.user != null) {
-        _user = _buildUser(session!.user);
+        final supaUser = session!.user;
+        try {
+          final res = await _supabase.from('profiles').select().eq('id', supaUser.id).maybeSingle();
+          if (res == null) {
+            _isProfileIncomplete = true;
+            _user = _buildUser(supaUser);
+          } else {
+            _isProfileIncomplete = false;
+            _user = AppUser(
+              id: res['id'] ?? supaUser.id,
+              name: res['full_name'] ?? supaUser.userMetadata?['full_name'] ?? 'User',
+              email: res['email'] ?? supaUser.email ?? '',
+              role: res['role'] ?? 'volunteer',
+              organization: res['organization'] ?? 'VolunteerSync',
+              createdAt: DateTime.tryParse(supaUser.createdAt) ?? DateTime.now(),
+              isVerified: supaUser.emailConfirmedAt != null,
+            );
+          }
+        } catch (e) {
+          debugPrint('Error loading profile: $e');
+          _isProfileIncomplete = true;
+          _user = _buildUser(supaUser);
+        }
         _status = AuthStatus.authenticated;
         notifyListeners();
       } else if (event == AuthChangeEvent.signedOut) {
         _user = null;
+        _isProfileIncomplete = false;
         _status = AuthStatus.unauthenticated;
         notifyListeners();
       } else if (event == AuthChangeEvent.tokenRefreshed &&
           session?.user != null) {
-        _user = _buildUser(session!.user);
+        final supaUser = session!.user;
+        try {
+          final res = await _supabase.from('profiles').select().eq('id', supaUser.id).maybeSingle();
+          if (res == null) {
+            _isProfileIncomplete = true;
+            _user = _buildUser(supaUser);
+          } else {
+            _isProfileIncomplete = false;
+            _user = AppUser(
+              id: res['id'] ?? supaUser.id,
+              name: res['full_name'] ?? supaUser.userMetadata?['full_name'] ?? 'User',
+              email: res['email'] ?? supaUser.email ?? '',
+              role: res['role'] ?? 'volunteer',
+              organization: res['organization'] ?? 'VolunteerSync',
+              createdAt: DateTime.tryParse(supaUser.createdAt) ?? DateTime.now(),
+              isVerified: supaUser.emailConfirmedAt != null,
+            );
+          }
+        } catch (e) {
+          _isProfileIncomplete = true;
+          _user = _buildUser(supaUser);
+        }
         _status = AuthStatus.authenticated;
         notifyListeners();
       }
@@ -110,7 +178,7 @@ class AuthProvider extends ChangeNotifier {
 
   // ── Register ────────────────────────────────────────────────────────────
   Future<bool> register(
-      String name, String email, String password, String org) async {
+      String name, String email, String password, String org, {required String role}) async {
     _status = AuthStatus.loading;
     _errorMessage = null;
     notifyListeners();
@@ -119,27 +187,47 @@ class AuthProvider extends ChangeNotifier {
       final response = await _supabase.auth.signUp(
         email: email.trim(),
         password: password,
-        data: {'full_name': name, 'organization': org, 'role': 'admin'},
+        data: {'full_name': name, 'organization': org, 'role': role},
       );
 
       if (response.user != null) {
         try {
-          await _supabase.from('profiles').insert({
+          await _supabase.from('profiles').upsert({
             'id': response.user!.id,
             'full_name': name,
             'email': email.trim(),
-            'role': 'admin',
-            'organization': org,
+            'role': role,
           });
         } catch (_) {
           // profiles table may not exist or already has row — ignore
+        }
+
+        if (role == 'volunteer') {
+          try {
+            await _supabase.from('volunteers').upsert({
+              'id': response.user!.id,
+              'full_name': name,
+              'email': email.trim(),
+              'phone': '',
+              'status': 'active',
+              'skills': [],
+              'availability': 'Volunteer',
+              'total_hours': 0,
+              'rating': 0.0,
+              'joined_date': DateTime.now().toIso8601String(),
+              'location': '',
+              'bio': '',
+            });
+          } catch (e) {
+            debugPrint('Error inserting into volunteers: $e');
+          }
         }
 
         _user = AppUser(
           id: response.user!.id,
           name: name,
           email: email.trim(),
-          role: 'admin',
+          role: role,
           organization: org,
           createdAt: DateTime.now(),
           isVerified: false,
@@ -184,6 +272,86 @@ class AuthProvider extends ChangeNotifier {
     _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
+  }
+
+  // ── Google Sign In ──────────────────────────────────────────────────────
+  Future<bool> signInWithGoogle() async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final res = await _supabase.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: kIsWeb ? null : 'volunteersync://login-callback',
+      );
+      return res;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _status = AuthStatus.error;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ── Complete Profile ─────────────────────────────────────────────────────
+  Future<bool> completeProfile(String organization, String role) async {
+    if (_user == null) return false;
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _supabase.auth.updateUser(
+        UserAttributes(
+          data: {
+            'organization': organization,
+            'role': role,
+          },
+        ),
+      );
+
+      await _supabase.from('profiles').upsert({
+        'id': _user!.id,
+        'full_name': _user!.name,
+        'email': _user!.email,
+        'role': role,
+      });
+
+      if (role == 'volunteer') {
+        try {
+          await _supabase.from('volunteers').upsert({
+            'id': _user!.id,
+            'full_name': _user!.name,
+            'email': _user!.email,
+            'phone': '',
+            'status': 'active',
+            'skills': [],
+            'availability': 'Volunteer',
+            'total_hours': 0,
+            'rating': 0.0,
+            'joined_date': DateTime.now().toIso8601String(),
+            'location': '',
+            'bio': '',
+          });
+        } catch (e) {
+          debugPrint('Error inserting into volunteers table: $e');
+        }
+      }
+
+      _user = _user!.copyWith(
+        role: role,
+        organization: organization,
+      );
+      _isProfileIncomplete = false;
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _status = AuthStatus.error;
+      notifyListeners();
+      return false;
+    }
   }
 
   void setUnauthenticated() {
