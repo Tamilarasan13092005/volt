@@ -43,7 +43,10 @@ class AppConstants {
   static const int attendanceRate = 94;
 
   // xAI Grok / Groq API configuration
-  static final String voltApiKey = 'avaYdS6gY5J0JQuUOLEUvpmfYF3bydGWW156M3b8Megy0pTCoo6x_ksg'.split('').reversed.join('');
+  static const String voltApiKey = String.fromEnvironment(
+    'GROK_API_KEY',
+    defaultValue: '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',
+  );
 }
 
 class AppStrings {
