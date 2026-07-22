@@ -34,7 +34,7 @@ jobs:
         continue-on-error: true
         working-directory: selenium_tests
         env:
-          BASE_URL: https://tamilarasan13092005.github.io/volunteersync/
+          BASE_URL: https://tamilarasan13092005.github.io/volunt/
           HEADLESS: "true"
 
       - name: Upload Selenium Report

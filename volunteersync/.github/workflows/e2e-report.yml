@@ -30,7 +30,7 @@ env:
   NODE_VERSION: "20"
   TEST_DIR: test
   REPORTS_DIR: test/e2e/reports
-  BASE_URL: https://tamilarasan13092005.github.io/volunteersync/
+  BASE_URL: https://tamilarasan13092005.github.io/volunt/
 
 # ══════════════════════════════════════════════════════════════════════════════
 # JOB 1 — Appium Android E2E  (mock mode, generates Excel)
