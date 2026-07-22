@@ -188,7 +188,6 @@ class AuthProvider extends ChangeNotifier {
         email: email.trim(),
         password: password,
         data: {'full_name': name, 'organization': org, 'role': role},
-        emailRedirectTo: _webRedirectUrl,
       );
 
       if (response.user != null) {
@@ -258,10 +257,7 @@ class AuthProvider extends ChangeNotifier {
   // ── Forgot Password ─────────────────────────────────────────────────────
   Future<bool> forgotPassword(String email) async {
     try {
-      await _supabase.auth.resetPasswordForEmail(
-        email.trim(),
-        redirectTo: _webRedirectUrl,
-      );
+      await _supabase.auth.resetPasswordForEmail(email.trim());
       return true;
     } catch (_) {
       return false;
@@ -286,7 +282,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final res = await _supabase.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: kIsWeb ? _webRedirectUrl : 'volunteersync://login-callback',
+        redirectTo: kIsWeb ? null : 'volunteersync://login-callback',
       );
       return res;
     } catch (e) {
@@ -361,11 +357,5 @@ class AuthProvider extends ChangeNotifier {
   void setUnauthenticated() {
     _status = AuthStatus.unauthenticated;
     notifyListeners();
-  }
-
-  // Helper to dynamically get the current URL for redirecting (works on localhost and hosted Pages)
-  String? get _webRedirectUrl {
-    if (!kIsWeb) return null;
-    return Uri.base.toString().split('#').first.split('?').first;
   }
 }
