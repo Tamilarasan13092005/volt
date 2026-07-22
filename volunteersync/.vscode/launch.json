@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "volunteersync (Web - Port 5555)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--web-port",
+        "5555"
+      ]
+    },
+    {
+      "name": "volunteersync (Default)",
+      "request": "launch",
+      "type": "dart"
+    }
+  ]
+}
