@@ -1,0 +1,105 @@
+name: only appium mobile test report
+
+# ─── Triggers ──────────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:          # allow manual trigger from GitHub UI
+
+# ─── Concurrency: cancel outdated runs on the same branch ──────────────────────
+concurrency:
+  group: e2e-reports-${{ github.ref }}
+  cancel-in-progress: true
+
+# ─── Permissions ───────────────────────────────────────────────────────────────
+permissions:
+  contents: read
+  actions: write          # needed to upload/download artifacts
+
+# ─── Global env ────────────────────────────────────────────────────────────────
+env:
+  NODE_VERSION: "20"
+  TEST_DIR: volunteersync/test
+  REPORTS_DIR: volunteersync/test/e2e/reports
+  BASE_URL: https://tamilarasan13092005.github.io/volunteersync/
+
+# ══════════════════════════════════════════════════════════════════════════════
+# JOB 1 — Appium Android E2E  (mock mode, generates Excel)
+# ══════════════════════════════════════════════════════════════════════════════
+jobs:
+  appium-e2e:
+    name: 📱 Appium Android E2E Report
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Checkout ─────────────────────────────────────────────────────────────
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ── Node setup ───────────────────────────────────────────────────────────
+      - name: ⚙️ Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: ${{ env.TEST_DIR }}/package-lock.json
+
+      # ── Install dependencies ─────────────────────────────────────────────────
+      - name: 📦 Install E2E dependencies
+        run: npm ci
+        working-directory: ${{ env.TEST_DIR }}
+
+      # ── Create reports dir ───────────────────────────────────────────────────
+      - name: 📁 Ensure reports directory exists
+        run: mkdir -p ${{ env.REPORTS_DIR }}
+
+      # ── Run Appium suite (mock mode) ─────────────────────────────────────────
+      - name: 🤖 Run Appium E2E Tests (Mock Mode)
+        id: appium_run
+        run: node e2e/appium/runner.js
+        working-directory: ${{ env.TEST_DIR }}
+        env:
+          APK_PATH: ""
+          CI: "true"
+
+      # ── Stamp report with commit metadata ────────────────────────────────────
+      - name: 🏷️ Annotate report with commit info
+        if: always()
+        run: |
+          echo "Branch  : ${{ github.ref_name }}"             >> ${{ env.REPORTS_DIR }}/appium_run_info.txt
+          echo "Commit  : ${{ github.sha }}"                  >> ${{ env.REPORTS_DIR }}/appium_run_info.txt
+          echo "Actor   : ${{ github.actor }}"                >> ${{ env.REPORTS_DIR }}/appium_run_info.txt
+          echo "Run #   : ${{ github.run_number }}"           >> ${{ env.REPORTS_DIR }}/appium_run_info.txt
+          echo "Trigger : ${{ github.event_name }}"           >> ${{ env.REPORTS_DIR }}/appium_run_info.txt
+          echo "Time    : $(date -u '+%Y-%m-%d %H:%M:%S UTC')">> ${{ env.REPORTS_DIR }}/appium_run_info.txt
+
+      # ── Upload artifact ──────────────────────────────────────────────────────
+      - name: 📤 Upload Appium Excel Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appium mobile test report
+          path: |
+            ${{ env.REPORTS_DIR }}/appium_e2e_report.xlsx
+            ${{ env.REPORTS_DIR }}/appium_run_info.txt
+          retention-days: 90
+          if-no-files-found: warn
+
+      # ── Print summary to GitHub Step Summary ─────────────────────────────────
+      - name: 📝 Write Appium summary to job summary
+        if: always()
+        run: |
+          echo "## 📱 Appium E2E Report — Run \`#${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered by | \`${{ github.actor }}\` via \`${{ github.event_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Report | \`appium_e2e_report.xlsx\` (download from Artifacts ↑) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> ℹ️ Tests run in **mock mode** — 181 test cases across 8 screens." >> $GITHUB_STEP_SUMMARY
