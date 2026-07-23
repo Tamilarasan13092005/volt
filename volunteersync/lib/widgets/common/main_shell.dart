@@ -345,8 +345,10 @@ class _MobileShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    final mainItems =
-        navItems.where((n) => n.label != 'Settings').take(5).toList();
+    // On mobile, show at most 5 items in the bottom nav bar.
+    // Settings is prioritized so that users can configure their account and logout.
+    // Reports is excluded on mobile as charts are best viewed on desktop screens.
+    final mainItems = navItems.where((n) => n.label != 'Reports').toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,

@@ -416,22 +416,12 @@ class DashboardProvider extends ChangeNotifier {
 
     _monthlyVolunteers = [];
 
-    for (int i = 0; i < 9; i++) {
-      // Calculate the slot month
-      int monthOffset = now.month - 8 + i;
-      int year = now.year;
-      while (monthOffset <= 0) {
-        monthOffset += 12;
-        year -= 1;
-      }
-      while (monthOffset > 12) {
-        monthOffset -= 12;
-        year += 1;
-      }
-      final slotEnd = DateTime(year, monthOffset + 1, 1)
-          .subtract(const Duration(seconds: 1));
+    // Calculate last 8 weeks cumulative growth
+    for (int i = 0; i < 8; i++) {
+      // Slot end: (7 - i) weeks ago from now
+      final slotEnd = now.subtract(Duration(days: 7 * (7 - i)));
 
-      // Cumulative: count ALL volunteers who joined up to end of this month
+      // Cumulative: count ALL volunteers who joined up to end of this week
       final count = sorted.where((v) {
         final raw = v['joined_date'] ?? v['created_at'];
         if (raw == null) return false;
@@ -440,7 +430,7 @@ class DashboardProvider extends ChangeNotifier {
       }).length;
 
       _monthlyVolunteers.add({
-        'month': monthNames[monthOffset - 1],
+        'month': '${monthNames[slotEnd.month - 1]} ${slotEnd.day}',
         'count': count,
       });
     }

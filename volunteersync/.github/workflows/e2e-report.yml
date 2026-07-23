@@ -3,9 +3,7 @@ name: 📊 E2E Test Reports (Appium + Selenium)
 # ─── Triggers ──────────────────────────────────────────────────────────────────
 on:
   push:
-    branches: ["main", "develop", "feature/**", "hotfix/**"]
   pull_request:
-    branches: ["main", "develop"]
   workflow_dispatch:          # allow manual trigger from GitHub UI
     inputs:
       suite:
@@ -210,12 +208,117 @@ jobs:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# JOB 3 — Combined Summary  (runs after both jobs complete)
+# JOB 3 — Vulnerability Scan (Trivy + npm audit)
+# ══════════════════════════════════════════════════════════════════════════════
+  vulnerability-scan:
+    name: 🛡️ Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      # ── Checkout ─────────────────────────────────────────────────────────────
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ── Setup Node.js ────────────────────────────────────────────────────────
+      - name: ⚙️ Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # ── Initialize Report File ───────────────────────────────────────────────
+      - name: 📁 Initialize Report File
+        run: |
+          echo "=================================================================" > "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "           VolunteerSync - Security & Vulnerability Scan         " >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "=================================================================" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "Scan Date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "Commit: ${{ github.sha }}" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "Branch: ${{ github.ref_name }}" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "=================================================================" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+
+      # ── Run Trivy Scanner ──────────────────────────────────────────────────
+      - name: 🔍 Run Trivy FS Scanner (Vulnerabilities & Secrets)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          output: 'trivy-scan.txt'
+          severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'
+          exit-code: '0'
+
+      - name: 📝 Append Trivy results to report
+        if: always()
+        run: |
+          echo "## 🛡️ Trivy FS Vulnerability Scan Results" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          if [ -f trivy-scan.txt ]; then
+            cat trivy-scan.txt >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          else
+            echo "Trivy scan results file not found." >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          fi
+          echo "" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "=================================================================" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+
+      # ── Run npm audit scans ──────────────────────────────────────────────────
+      - name: 📦 Run npm audit in root/test
+        if: always()
+        run: |
+          echo "## 📦 NPM Audit - test/ directory" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          npm audit --audit-level=moderate || true >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "=================================================================" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+        working-directory: test
+
+      - name: 📦 Run npm audit in selenium_tests
+        if: always()
+        run: |
+          echo "## 📦 NPM Audit - selenium_tests/ directory" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          npm audit --audit-level=moderate || true >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "=================================================================" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+        working-directory: selenium_tests
+
+      - name: 📦 Run npm audit in appium_tests
+        if: always()
+        run: |
+          echo "## 📦 NPM Audit - appium_tests/ directory" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          npm audit --audit-level=moderate || true >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "=================================================================" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+        working-directory: appium_tests
+
+      - name: 📦 Run npm audit in load_tests
+        if: always()
+        run: |
+          echo "## 📦 NPM Audit - load_tests/ directory" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          npm audit --audit-level=moderate || true >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "=================================================================" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+          echo "" >> "$GITHUB_WORKSPACE/vulnerability-report.txt"
+        working-directory: load_tests
+
+      - name: 📤 Upload Vulnerability Report Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vulnerability-report_run-${{ github.run_number }}_${{ github.sha }}
+          path: vulnerability-report.txt
+          retention-days: 90
+          if-no-files-found: warn
+
+# ══════════════════════════════════════════════════════════════════════════════
+# JOB 4 — Combined Summary  (runs after both jobs complete)
 # ══════════════════════════════════════════════════════════════════════════════
   e2e-summary:
     name: 📋 Combined E2E Summary
     runs-on: ubuntu-latest
-    needs: [appium-e2e, selenium-e2e]
+    needs: [appium-e2e, selenium-e2e, vulnerability-scan]
     # Always run summary, even if previous jobs failed
     if: always()
 
@@ -225,7 +328,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      # ── Download both reports ────────────────────────────────────────────────
+      # ── Download all reports ─────────────────────────────────────────────────
       - name: 📥 Download Appium report artifact
         uses: actions/download-artifact@v4
         with:
@@ -240,11 +343,19 @@ jobs:
           path: downloaded/selenium
         continue-on-error: true
 
+      - name: 📥 Download Vulnerability report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vulnerability-report_run-${{ github.run_number }}_${{ github.sha }}
+          path: downloaded/vulnerability
+        continue-on-error: true
+
       # ── List what was generated ──────────────────────────────────────────────
       - name: 📂 List generated reports
         run: |
           echo "=== Appium Report ===" && ls -lh downloaded/appium/ 2>/dev/null || echo "(not found)"
           echo "=== Selenium Report ===" && ls -lh downloaded/selenium/ 2>/dev/null || echo "(not found)"
+          echo "=== Vulnerability Report ===" && ls -lh downloaded/vulnerability/ 2>/dev/null || echo "(not found)"
 
       # ── Upload combined bundle ───────────────────────────────────────────────
       - name: 📦 Upload combined E2E reports bundle
@@ -269,12 +380,14 @@ jobs:
           echo "|-------|----------|---------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Appium E2E | 📱 Android (UiAutomator2) | 8 | **181** | ${{ needs.appium-e2e.result == 'success' && '✅ Pass' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Selenium E2E | 🌐 Chrome Web | 8 | **119** | ${{ needs.selenium-e2e.result == 'success' && '✅ Pass' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Vulnerability Scan | 🛡️ Repo Security (Trivy + NPM) | - | - | ${{ needs.vulnerability-scan.result == 'success' && '✅ Pass' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## 📥 Download Reports" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Go to **Actions → This run → Artifacts** to download:" >> $GITHUB_STEP_SUMMARY
           echo "- \`appium-e2e-report_run-${{ github.run_number }}_...\` → \`appium_e2e_report.xlsx\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`selenium-e2e-report_run-${{ github.run_number }}_...\` → \`selenium_e2e_report.xlsx\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`vulnerability-report_run-${{ github.run_number }}_...\` → \`vulnerability-report.txt\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`ALL-e2e-reports_run-${{ github.run_number }}_...\` → Both reports bundled" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## 📋 Screen Coverage" >> $GITHUB_STEP_SUMMARY

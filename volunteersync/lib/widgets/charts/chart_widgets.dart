@@ -14,15 +14,33 @@ class VolunteerGrowthChart extends StatelessWidget {
         .asMap()
         .entries
         .map((e) =>
-            FlSpot(e.key.toDouble(), (e.value['count'] as int).toDouble()))
+            FlSpot(e.key.toDouble(), (e.value['count'] as num).toDouble()))
         .toList();
+
+    // Dynamically calculate Y-axis range based on actual data
+    final double maxVal = data.isEmpty
+        ? 10
+        : data
+            .map((e) => (e['count'] as num).toDouble())
+            .reduce((a, b) => a > b ? a : b);
+    final double minVal = data.isEmpty
+        ? 0
+        : data
+            .map((e) => (e['count'] as num).toDouble())
+            .reduce((a, b) => a < b ? a : b);
+
+    // Give it a small padding but clamp minY at 0.0
+    final double minY = (minVal - 2).clamp(0.0, double.infinity);
+    final double maxY = maxVal + 2;
+    // Ensure interval is at least 1.0 to avoid division by zero or infinite labels
+    final double interval = ((maxY - minY) / 3).clamp(1.0, double.infinity);
 
     return LineChart(
       LineChartData(
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          horizontalInterval: 50,
+          horizontalInterval: interval,
           getDrawingHorizontalLine: (_) => const FlLine(
             color: AppColors.border,
             strokeWidth: 1,
@@ -32,7 +50,7 @@ class VolunteerGrowthChart extends StatelessWidget {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              interval: 50,
+              interval: interval,
               reservedSize: 40,
               getTitlesWidget: (v, _) => Text(
                 v.toInt().toString(),
@@ -83,7 +101,8 @@ class VolunteerGrowthChart extends StatelessWidget {
             ),
           ),
         ],
-        minY: 150,
+        minY: minY,
+        maxY: maxY,
       ),
     );
   }

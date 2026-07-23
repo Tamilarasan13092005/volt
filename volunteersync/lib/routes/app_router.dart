@@ -31,6 +31,7 @@ class AppRouter {
   static GoRouter router(BuildContext context) {
     return GoRouter(
       initialLocation: landing,
+      refreshListenable: context.read<AuthProvider>(),
       redirect: (ctx, state) {
         final auth = ctx.read<AuthProvider>();
 

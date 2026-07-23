@@ -430,7 +430,7 @@ class _MobileChartsColumn extends StatelessWidget {
             children: [
               const SectionHeader(
                 title: 'Volunteer Growth',
-                subtitle: 'Last 9 months',
+                subtitle: 'Last 8 weeks',
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -479,7 +479,7 @@ class _DesktopChartsRow extends StatelessWidget {
               children: [
                 const SectionHeader(
                   title: 'Volunteer Growth',
-                  subtitle: 'Last 9 months',
+                  subtitle: 'Last 8 weeks',
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
