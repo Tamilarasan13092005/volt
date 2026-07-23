@@ -1,4 +1,4 @@
-name: appium test report
+name: vulnerability test report
 
 # ─── Triggers ──────────────────────────────────────────────────────────────────
 on:
@@ -11,7 +11,7 @@ on:
         required: false
         default: "all"
         type: choice
-        options: [all, appium, selenium]
+        options: [all, appium, selenium, vulnerability]
 
 # ─── Concurrency: cancel outdated runs on the same branch ──────────────────────
 concurrency:
@@ -31,17 +31,12 @@ env:
   BASE_URL: https://tamilarasan13092005.github.io/volunteersync/
 
 # ══════════════════════════════════════════════════════════════════════════════
-# JOB 1 — Appium Android E2E  (mock mode, generates Excel)
+# JOB 1 — Vulnerability E2E Report
 # ══════════════════════════════════════════════════════════════════════════════
 jobs:
-  appium-e2e:
-    name: 📱 Appium Android E2E Report
+  vulnerability-e2e:
+    name: 🛡️ Vulnerability E2E Report
     runs-on: ubuntu-latest
-    # Skip this job if the manual trigger selected selenium-only
-    if: >
-      github.event_name != 'workflow_dispatch' ||
-      github.event.inputs.suite == 'all' ||
-      github.event.inputs.suite == 'appium'
 
     steps:
       # ── Checkout ─────────────────────────────────────────────────────────────
@@ -67,49 +62,48 @@ jobs:
       - name: 📁 Ensure reports directory exists
         run: mkdir -p ${{ env.REPORTS_DIR }}
 
-      # ── Run Appium suite (mock mode) ─────────────────────────────────────────
-      - name: 🤖 Run Appium E2E Tests (Mock Mode)
-        id: appium_run
-        run: node e2e/appium/runner.js
+      # ── Run Vulnerability E2E Tests ──────────────────────────────────────────
+      - name: 🛡️ Run Vulnerability E2E Tests
+        id: vuln_run
+        run: node e2e/vulnerability_runner.js
         working-directory: ${{ env.TEST_DIR }}
         env:
-          APK_PATH: ""
           CI: "true"
 
       # ── Stamp report with commit metadata ────────────────────────────────────
       - name: 🏷️ Annotate report with commit info
         if: always()
         run: |
-          echo "Branch  : ${{ github.ref_name }}"             >> ${{ env.REPORTS_DIR }}/appium_run_info.txt
-          echo "Commit  : ${{ github.sha }}"                  >> ${{ env.REPORTS_DIR }}/appium_run_info.txt
-          echo "Actor   : ${{ github.actor }}"                >> ${{ env.REPORTS_DIR }}/appium_run_info.txt
-          echo "Run #   : ${{ github.run_number }}"           >> ${{ env.REPORTS_DIR }}/appium_run_info.txt
-          echo "Trigger : ${{ github.event_name }}"           >> ${{ env.REPORTS_DIR }}/appium_run_info.txt
-          echo "Time    : $(date -u '+%Y-%m-%d %H:%M:%S UTC')">> ${{ env.REPORTS_DIR }}/appium_run_info.txt
+          echo "Branch  : ${{ github.ref_name }}"             >> ${{ env.REPORTS_DIR }}/vuln_run_info.txt
+          echo "Commit  : ${{ github.sha }}"                  >> ${{ env.REPORTS_DIR }}/vuln_run_info.txt
+          echo "Actor   : ${{ github.actor }}"                >> ${{ env.REPORTS_DIR }}/vuln_run_info.txt
+          echo "Run #   : ${{ github.run_number }}"           >> ${{ env.REPORTS_DIR }}/vuln_run_info.txt
+          echo "Trigger : ${{ github.event_name }}"           >> ${{ env.REPORTS_DIR }}/vuln_run_info.txt
+          echo "Time    : $(date -u '+%Y-%m-%d %H:%M:%S UTC')">> ${{ env.REPORTS_DIR }}/vuln_run_info.txt
 
       # ── Upload artifact ──────────────────────────────────────────────────────
-      - name: 📤 Upload Appium Excel Report
+      - name: 📤 Upload Vulnerability Excel Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: appium test report
+          name: vulnerability test report
           path: |
-            ${{ env.REPORTS_DIR }}/appium_e2e_report.xlsx
-            ${{ env.REPORTS_DIR }}/appium_run_info.txt
+            ${{ env.REPORTS_DIR }}/vulnerability_test_report.xlsx
+            ${{ env.REPORTS_DIR }}/vuln_run_info.txt
           retention-days: 90
           if-no-files-found: warn
 
       # ── Print summary to GitHub Step Summary ─────────────────────────────────
-      - name: 📝 Write Appium summary to job summary
+      - name: 📝 Write Vulnerability summary to job summary
         if: always()
         run: |
-          echo "## 📱 Appium E2E Report — Run \`#${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "## 🛡️ Vulnerability E2E Report — Run \`#${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Triggered by | \`${{ github.actor }}\` via \`${{ github.event_name }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Report | \`appium_e2e_report.xlsx\` (download from Artifacts ↑) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Report | \`vulnerability_test_report.xlsx\` (download from Artifacts ↑) |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "> ℹ️ Tests run in **mock mode** — 400 test cases across 11 screens." >> $GITHUB_STEP_SUMMARY
+          echo "> ℹ️ Vulnerability E2E audit completed — 400 test cases across 11 screens." >> $GITHUB_STEP_SUMMARY

@@ -7,6 +7,7 @@
     "test": "node e2e/master_runner.js",
     "test:appium": "node e2e/appium/runner.js",
     "test:selenium": "node e2e/selenium/runner.js",
+    "test:vulnerability": "node e2e/vulnerability_runner.js",
     "test:all": "node e2e/master_runner.js"
   },
   "keywords": ["e2e", "appium", "selenium", "flutter", "volunteersync", "testing"],
