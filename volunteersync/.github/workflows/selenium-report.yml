@@ -1,4 +1,4 @@
-name: Selenium E2E test report
+name: Selenium E2E Test
 
 # ─── Triggers ──────────────────────────────────────────────────────────────────
 on:
@@ -24,11 +24,11 @@ env:
   BASE_URL: https://tamilarasan13092005.github.io/volunteersync/
 
 # ══════════════════════════════════════════════════════════════════════════════
-# JOB 1 — Selenium E2E Report
+# JOB 1 — Selenium E2E Test
 # ══════════════════════════════════════════════════════════════════════════════
 jobs:
   selenium-e2e:
-    name: 🌐 Selenium E2E Report
+    name: 🌐 Selenium E2E Test
     runs-on: ubuntu-latest
 
     steps:
@@ -75,13 +75,14 @@ jobs:
           echo "Time    : $(date -u '+%Y-%m-%d %H:%M:%S UTC')">> ${{ env.REPORTS_DIR }}/selenium_run_info.txt
 
       # ── Upload artifact ──────────────────────────────────────────────────────
-      - name: 📤 Upload Selenium Excel Report
+      - name: 📤 Upload Selenium Test Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Selenium E2E test report
+          name: Selenium E2E Test Report
           path: |
             ${{ env.REPORTS_DIR }}/selenium_e2e_report.xlsx
+            ${{ env.REPORTS_DIR }}/selenium_e2e_report.html
             ${{ env.REPORTS_DIR }}/selenium_run_info.txt
           retention-days: 90
           if-no-files-found: warn
@@ -90,13 +91,13 @@ jobs:
       - name: 📝 Write Selenium summary to job summary
         if: always()
         run: |
-          echo "## 🌐 Selenium E2E Report — Run \`#${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "## 🌐 Selenium E2E Test Report — Run \`#${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Triggered by | \`${{ github.actor }}\` via \`${{ github.event_name }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Report | \`selenium_e2e_report.xlsx\` (download from Artifacts ↑) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Reports | \`selenium_e2e_report.xlsx\` & \`selenium_e2e_report.html\` (download from Artifacts ↑) |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "> ℹ️ Selenium E2E test suite completed — 400 test cases across 11 screens." >> $GITHUB_STEP_SUMMARY

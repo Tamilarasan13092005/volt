@@ -1,21 +1,14 @@
-name: Load test report
+name: Load Test
 
 # ─── Triggers ──────────────────────────────────────────────────────────────────
 on:
   push:
   pull_request:
-  workflow_dispatch:          # allow manual trigger from GitHub UI
-    inputs:
-      suite:
-        description: "Which suite to run"
-        required: false
-        default: "all"
-        type: choice
-        options: [all, appium, selenium, vulnerability, load]
+  workflow_dispatch:
 
 # ─── Concurrency: cancel outdated runs on the same branch ──────────────────────
 concurrency:
-  group: e2e-reports-${{ github.ref }}
+  group: e2e-reports-load-${{ github.ref }}
   cancel-in-progress: true
 
 # ─── Permissions ───────────────────────────────────────────────────────────────
@@ -31,11 +24,11 @@ env:
   BASE_URL: https://tamilarasan13092005.github.io/volunteersync/
 
 # ══════════════════════════════════════════════════════════════════════════════
-# JOB 1 — Load E2E Report
+# JOB 1 — Load Test
 # ══════════════════════════════════════════════════════════════════════════════
 jobs:
   load-e2e:
-    name: ⚡ Load E2E Report
+    name: ⚡ Load Test
     runs-on: ubuntu-latest
 
     steps:
@@ -82,13 +75,14 @@ jobs:
           echo "Time    : $(date -u '+%Y-%m-%d %H:%M:%S UTC')">> ${{ env.REPORTS_DIR }}/load_run_info.txt
 
       # ── Upload artifact ──────────────────────────────────────────────────────
-      - name: 📤 Upload Load Excel Report
+      - name: 📤 Upload Load Test Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Load test report
+          name: Load Test Report
           path: |
             ${{ env.REPORTS_DIR }}/load_test_report.xlsx
+            ${{ env.REPORTS_DIR }}/load_test_report.html
             ${{ env.REPORTS_DIR }}/load_run_info.txt
           retention-days: 90
           if-no-files-found: warn
@@ -97,13 +91,13 @@ jobs:
       - name: 📝 Write Load summary to job summary
         if: always()
         run: |
-          echo "## ⚡ Load E2E Report — Run \`#${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "## ⚡ Load Test Report — Run \`#${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Triggered by | \`${{ github.actor }}\` via \`${{ github.event_name }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Report | \`load_test_report.xlsx\` (download from Artifacts ↑) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Reports | \`load_test_report.xlsx\` & \`load_test_report.html\` (download from Artifacts ↑) |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "> ℹ️ Load E2E benchmark completed — 400 test cases across 11 screens." >> $GITHUB_STEP_SUMMARY
