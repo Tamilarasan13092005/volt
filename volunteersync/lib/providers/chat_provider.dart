@@ -259,30 +259,48 @@ $profileStr
           };
         }).toList();
 
-        final body = jsonEncode({
-          'model': isGroq ? 'llama-3.1-8b-instant' : 'grok-2-1212',
-          'messages': [
-            {
-              'role': 'system',
-              'content': 'You are Volt, a friendly, highly interactive, and conversational AI volunteer coordinator for VolunteerSync. Engage the user in a natural, active chat. You have access to the real-time database context below containing the list of registered volunteers, events, and organizers.\n\n'
-                  'CRITICAL RULE 1: You MUST ONLY answer questions related to the VolunteerSync app (Volt app), volunteer coordination, and the volunteers, events, or organizers in the provided database. You must not answer general knowledge, programming (e.g. Java, Python), or other unrelated queries.\n\n'
-                  'CRITICAL RULE 2: If the user asks a question about unrelated topics (like "what is java", general programming, recipes, history, general math, or anything outside of VolunteerSync or its data), you MUST politely decline to answer. Tell the user to ask questions related to this application (VolunteerSync / Volt app) instead.\n\n'
-                  'CRITICAL RULE 3: You MUST ONLY refer to and use the volunteers and events that are present in the provided database context. DO NOT hallucinate, invent, or output any dummy volunteer names or events (like "Alex Chen", "Emily Patel", "Benjamin Lee", "Sophia Rodriguez", "Michael Kim", etc.) that are not in the context list. If a volunteer or event is not listed in the database context, you must state that they do not exist in the database. If the database context is empty, state that there are no volunteers or events registered.\n\n'
-                  'Here is the real-time database context:\n$databaseContext'
-            },
-            ...historyList,
-          ],
-          'temperature': 0.7,
-        });
+        final candidateModels = isGroq
+            ? ['llama-3.3-70b-versatile', 'llama3-8b-8192', 'llama-3.1-8b-instant', 'gemma2-9b-it']
+            : ['grok-2-1212'];
 
-        final response = await http.post(url, headers: headers, body: body);
+        http.Response? response;
+        String? successReply;
+        String lastResponseBody = '';
+        int lastStatusCode = 500;
 
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          reply = data['choices'][0]['message']['content'] ?? 'No response content.';
+        for (final modelName in candidateModels) {
+          final body = jsonEncode({
+            'model': modelName,
+            'messages': [
+              {
+                'role': 'system',
+                'content': 'You are Volt, a friendly, highly interactive, and conversational AI volunteer coordinator for VolunteerSync. Engage the user in a natural, active chat. You have access to the real-time database context below containing the list of registered volunteers, events, and organizers.\n\n'
+                    'CRITICAL RULE 1: You MUST ONLY answer questions related to the VolunteerSync app (Volt app), volunteer coordination, and the volunteers, events, or organizers in the provided database. You must not answer general knowledge, programming (e.g. Java, Python), or other unrelated queries.\n\n'
+                    'CRITICAL RULE 2: If the user asks a question about unrelated topics (like "what is java", general programming, recipes, history, general math, or anything outside of VolunteerSync or its data), you MUST politely decline to answer. Tell the user to ask questions related to this application (VolunteerSync / Volt app) instead.\n\n'
+                    'CRITICAL RULE 3: You MUST ONLY refer to and use the volunteers and events that are present in the provided database context. DO NOT hallucinate, invent, or output any dummy volunteer names or events (like "Alex Chen", "Emily Patel", "Benjamin Lee", "Sophia Rodriguez", "Michael Kim", etc.) that are not in the context list. If a volunteer or event is not listed in the database context, you must state that they do not exist in the database. If the database context is empty, state that there are no volunteers or events registered.\n\n'
+                    'Here is the real-time database context:\n$databaseContext'
+              },
+              ...historyList,
+            ],
+            'temperature': 0.7,
+          });
+
+          final res = await http.post(url, headers: headers, body: body);
+          lastStatusCode = res.statusCode;
+          lastResponseBody = res.body;
+
+          if (res.statusCode == 200) {
+            final data = jsonDecode(res.body);
+            successReply = data['choices'][0]['message']['content'] ?? 'No response content.';
+            break;
+          }
+        }
+
+        if (successReply != null) {
+          reply = successReply;
         } else {
           final apiName = isGroq ? 'Groq' : 'Volt';
-          reply = 'Error from $apiName API (Status ${response.statusCode}): ${response.body}';
+          reply = 'Error from $apiName API (Status $lastStatusCode): $lastResponseBody';
         }
       } catch (e) {
         final apiName = AppConstants.voltApiKey.startsWith('gsk_') ? 'Groq' : 'Volt';

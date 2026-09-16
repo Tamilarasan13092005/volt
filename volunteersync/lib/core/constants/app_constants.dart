@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class AppConstants {
   // App Info
   static const String appName = 'VolunteerSync';
@@ -43,7 +45,14 @@ class AppConstants {
   static const int attendanceRate = 94;
 
   // xAI Grok / Groq API configuration
-  static const String voltApiKey = String.fromEnvironment('GROQ_API_KEY', defaultValue: '');
+  static String _overrideApiKey = '';
+  static String get voltApiKey {
+    if (_overrideApiKey.isNotEmpty) return _overrideApiKey;
+    return const String.fromEnvironment('GROQ_API_KEY', defaultValue: '');
+  }
+  static set voltApiKey(String value) {
+    _overrideApiKey = value;
+  }
 }
 
 class AppStrings {
