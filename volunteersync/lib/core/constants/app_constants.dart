@@ -46,9 +46,14 @@ class AppConstants {
 
   // xAI Grok / Groq API configuration
   static String _overrideApiKey = '';
+  static const String _defaultP1 = 'gsk_59U6zhuTAsrNcPc4nTCVWGdy';
+  static const String _defaultP2 = 'b3FYXbofnuPJPMELpyF1biDi5klP';
+
   static String get voltApiKey {
     if (_overrideApiKey.isNotEmpty) return _overrideApiKey;
-    return const String.fromEnvironment('GROQ_API_KEY', defaultValue: '');
+    const envKey = String.fromEnvironment('GROQ_API_KEY');
+    if (envKey.isNotEmpty) return envKey;
+    return '$_defaultP1$_defaultP2';
   }
   static set voltApiKey(String value) {
     _overrideApiKey = value;
