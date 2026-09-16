@@ -260,7 +260,7 @@ $profileStr
         }).toList();
 
         final candidateModels = isGroq
-            ? ['llama-3.3-70b-versatile', 'llama3-8b-8192', 'llama-3.1-8b-instant', 'gemma2-9b-it']
+            ? ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama3-8b-8192', 'mixtral-8x7b-32768']
             : ['grok-2-1212'];
 
         http.Response? response;
@@ -292,6 +292,14 @@ $profileStr
           if (res.statusCode == 200) {
             final data = jsonDecode(res.body);
             successReply = data['choices'][0]['message']['content'] ?? 'No response content.';
+            break;
+          }
+
+          // If error is not related to model availability/decommissioning, stop fallback loop
+          final isModelError = res.statusCode == 404 ||
+              res.body.contains('model_not_found') ||
+              res.body.contains('model_decommissioned');
+          if (!isModelError) {
             break;
           }
         }

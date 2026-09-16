@@ -295,7 +295,7 @@ class _ChatSidebar extends StatelessWidget {
                           onTap: () => context.read<ChatProvider>().selectSession(s.id),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
+                                horizontal: 8, vertical: 8),
                             child: Row(
                               children: [
                                 Icon(Icons.chat_bubble_outline_rounded,
@@ -303,12 +303,14 @@ class _ChatSidebar extends StatelessWidget {
                                     color: isActive
                                         ? AppColors.primary
                                         : AppColors.textMuted),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: 8),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(s.title,
+                                          maxLines: 1,
                                           style: TextStyle(
                                             color: isActive
                                                 ? AppColors.textPrimary
@@ -321,6 +323,8 @@ class _ChatSidebar extends StatelessWidget {
                                           overflow: TextOverflow.ellipsis),
                                       Text(
                                           '${s.messageCount} messages · ${AppUtils.timeAgo(s.lastMessageAt)}',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
                                               color: AppColors.textDisabled,
                                               fontSize: 10)),
@@ -333,6 +337,8 @@ class _ChatSidebar extends StatelessWidget {
                         ),
                       ),
                       IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                         icon: const Icon(Icons.delete_outline_rounded,
                             size: 16, color: AppColors.textDisabled),
                         hoverColor: Colors.red.withOpacity(0.1),
