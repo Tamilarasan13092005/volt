@@ -7,6 +7,7 @@ class AppUser {
   final String? avatarUrl;
   final DateTime createdAt;
   final bool isVerified;
+  final String category;
   final Map<String, dynamic>? preferences;
 
   const AppUser({
@@ -18,6 +19,7 @@ class AppUser {
     this.avatarUrl,
     required this.createdAt,
     this.isVerified = false,
+    this.category = 'General Volunteer',
     this.preferences,
   });
 
@@ -31,6 +33,7 @@ class AppUser {
       avatarUrl: json['avatarUrl'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       isVerified: json['isVerified'] as bool? ?? false,
+      category: json['category'] as String? ?? 'General Volunteer',
       preferences: json['preferences'] as Map<String, dynamic>?,
     );
   }
@@ -44,6 +47,7 @@ class AppUser {
         'avatarUrl': avatarUrl,
         'createdAt': createdAt.toIso8601String(),
         'isVerified': isVerified,
+        'category': category,
         'preferences': preferences,
       };
 
@@ -56,6 +60,7 @@ class AppUser {
     String? avatarUrl,
     DateTime? createdAt,
     bool? isVerified,
+    String? category,
     Map<String, dynamic>? preferences,
   }) {
     return AppUser(
@@ -67,6 +72,7 @@ class AppUser {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       createdAt: createdAt ?? this.createdAt,
       isVerified: isVerified ?? this.isVerified,
+      category: category ?? this.category,
       preferences: preferences ?? this.preferences,
     );
   }

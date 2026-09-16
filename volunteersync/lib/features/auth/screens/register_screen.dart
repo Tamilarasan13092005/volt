@@ -24,6 +24,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscure = true;
   bool _agreed = false;
   String _selectedRole = 'volunteer';
+  String _selectedCategory = 'General Volunteer';
 
   @override
   void dispose() {
@@ -50,6 +51,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _passCtrl.text,
       _orgCtrl.text.trim(),
       role: _selectedRole,
+      category: _selectedCategory,
     );
     if (mounted && ok) {
       await Future.delayed(const Duration(milliseconds: 300));
@@ -86,346 +88,410 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
           SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-                  IconButton(
-                    onPressed: () => context.go(AppRouter.login),
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.textMuted, size: 20),
-                  ).animate().fadeIn(),
-                  const SizedBox(height: 24),
-                  Row(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          gradient: AppColors.primaryGradient,
-                          borderRadius: BorderRadius.circular(13),
-                        ),
-                        child: const Icon(Icons.hub_rounded,
-                            color: Colors.white, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(AppConstants.appName,
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                          )),
-                    ],
-                  ).animate().fadeIn(delay: 100.ms),
-                  const SizedBox(height: 40),
-                  Text('Create your account',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(fontWeight: FontWeight.w800))
-                      .animate()
-                      .fadeIn(delay: 200.ms),
-                  const SizedBox(height: 6),
-                  const Text('Start coordinating volunteers in minutes',
-                          style: TextStyle(
-                              color: AppColors.textMuted, fontSize: 14))
-                      .animate()
-                      .fadeIn(delay: 300.ms),
-                  const SizedBox(height: 40),
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          key: const Key('register_name_field'),
-                          controller: _nameCtrl,
-                          style: const TextStyle(color: AppColors.textPrimary),
-                          decoration: const InputDecoration(
-                            labelText: 'Full Name',
-                            prefixIcon: Icon(Icons.person_outline_rounded,
-                                color: AppColors.textMuted, size: 20),
-                          ),
-                          validator: (v) => v == null || v.trim().length < 2
-                              ? 'Enter your name'
-                              : null,
-                        ).animate().fadeIn(delay: 350.ms),
-
-                        const SizedBox(height: 14),
-
-                        // Role Selection Segmented Control
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Register as a:',
-                              style: TextStyle(
-                                color: AppColors.textMuted,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
+                      const SizedBox(height: 16),
+                      IconButton(
+                        onPressed: () => context.go(AppRouter.login),
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                            color: AppColors.textMuted, size: 20),
+                      ).animate().fadeIn(),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              gradient: AppColors.primaryGradient,
+                              borderRadius: BorderRadius.circular(13),
                             ),
-                            const SizedBox(height: 8),
-                            Container(
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceElevated,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.border),
+                            child: const Icon(Icons.hub_rounded,
+                                color: Colors.white, size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(AppConstants.appName,
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                              )),
+                        ],
+                      ).animate().fadeIn(delay: 100.ms),
+                      const SizedBox(height: 40),
+                      Text('Create your account',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(fontWeight: FontWeight.w800))
+                          .animate()
+                          .fadeIn(delay: 200.ms),
+                      const SizedBox(height: 6),
+                      const Text('Start coordinating volunteers in minutes',
+                              style: TextStyle(
+                                  color: AppColors.textMuted, fontSize: 14))
+                          .animate()
+                          .fadeIn(delay: 300.ms),
+                      const SizedBox(height: 40),
+                      Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            TextFormField(
+                              key: const Key('register_name_field'),
+                              controller: _nameCtrl,
+                              style:
+                                  const TextStyle(color: AppColors.textPrimary),
+                              decoration: const InputDecoration(
+                                labelText: 'Full Name',
+                                prefixIcon: Icon(Icons.person_outline_rounded,
+                                    color: AppColors.textMuted, size: 20),
                               ),
-                              padding: const EdgeInsets.all(4),
+                              validator: (v) => v == null || v.trim().length < 2
+                                  ? 'Enter your name'
+                                  : null,
+                            ).animate().fadeIn(delay: 350.ms),
+
+                            const SizedBox(height: 14),
+
+                            // Role Selection Segmented Control
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Register as a:',
+                                  style: TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceElevated,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppColors.border),
+                                  ),
+                                  padding: const EdgeInsets.all(4),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () => setState(() =>
+                                              _selectedRole = 'volunteer'),
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                                milliseconds: 200),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  _selectedRole == 'volunteer'
+                                                      ? AppColors.primary
+                                                      : Colors.transparent,
+                                              borderRadius:
+                                                  BorderRadius.circular(9),
+                                            ),
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              'Volunteer',
+                                              style: TextStyle(
+                                                color: _selectedRole ==
+                                                        'volunteer'
+                                                    ? Colors.white
+                                                    : AppColors.textSecondary,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () => setState(() =>
+                                              _selectedRole = 'organizer'),
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                                milliseconds: 200),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  _selectedRole == 'organizer'
+                                                      ? AppColors.primary
+                                                      : Colors.transparent,
+                                              borderRadius:
+                                                  BorderRadius.circular(9),
+                                            ),
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              'Organizer',
+                                              style: TextStyle(
+                                                color: _selectedRole ==
+                                                        'organizer'
+                                                    ? Colors.white
+                                                    : AppColors.textSecondary,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ).animate().fadeIn(delay: 380.ms),
+
+                            const SizedBox(height: 14),
+
+                            DropdownButtonFormField<String>(
+                              key: const Key('register_category_field'),
+                              value: _selectedCategory,
+                              dropdownColor: AppColors.surfaceElevated,
+                              style: const TextStyle(color: AppColors.textPrimary),
+                              decoration: const InputDecoration(
+                                labelText: 'Volunteer / Contribution Category',
+                                prefixIcon: Icon(Icons.category_outlined,
+                                    color: AppColors.textMuted, size: 20),
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'Food Donor', child: Text('Food Donor')),
+                                DropdownMenuItem(value: 'Blood Donor', child: Text('Blood Donor')),
+                                DropdownMenuItem(value: 'Medical Volunteer', child: Text('Medical Volunteer')),
+                                DropdownMenuItem(value: 'Driver / Transportation', child: Text('Driver / Transportation')),
+                                DropdownMenuItem(value: 'Clothing Donor', child: Text('Clothing Donor')),
+                                DropdownMenuItem(value: 'Fundraiser', child: Text('Fundraiser')),
+                                DropdownMenuItem(value: 'General Volunteer', child: Text('General Volunteer')),
+                              ],
+                              onChanged: (v) => setState(() => _selectedCategory = v!),
+                            ).animate().fadeIn(delay: 390.ms),
+
+                            const SizedBox(height: 14),
+
+                            TextFormField(
+                              key: const Key('register_org_field'),
+                              controller: _orgCtrl,
+                              style:
+                                  const TextStyle(color: AppColors.textPrimary),
+                              decoration: const InputDecoration(
+                                labelText: 'Organization',
+                                prefixIcon: Icon(Icons.business_outlined,
+                                    color: AppColors.textMuted, size: 20),
+                              ),
+                              validator: (v) => v == null || v.trim().isEmpty
+                                  ? 'Enter your organization'
+                                  : null,
+                            ).animate().fadeIn(delay: 400.ms),
+
+                            const SizedBox(height: 14),
+
+                            TextFormField(
+                              key: const Key('register_email_field'),
+                              controller: _emailCtrl,
+                              keyboardType: TextInputType.emailAddress,
+                              style:
+                                  const TextStyle(color: AppColors.textPrimary),
+                              decoration: const InputDecoration(
+                                labelText: 'Work Email',
+                                prefixIcon: Icon(Icons.mail_outline_rounded,
+                                    color: AppColors.textMuted, size: 20),
+                              ),
+                              validator: (v) => v == null || !v.contains('@')
+                                  ? 'Enter a valid email'
+                                  : null,
+                            ).animate().fadeIn(delay: 450.ms),
+
+                            const SizedBox(height: 14),
+
+                            TextFormField(
+                              key: const Key('register_password_field'),
+                              controller: _passCtrl,
+                              obscureText: _obscure,
+                              style:
+                                  const TextStyle(color: AppColors.textPrimary),
+                              decoration: InputDecoration(
+                                labelText: 'Password',
+                                prefixIcon: const Icon(
+                                    Icons.lock_outline_rounded,
+                                    color: AppColors.textMuted,
+                                    size: 20),
+                                suffixIcon: IconButton(
+                                  onPressed: () =>
+                                      setState(() => _obscure = !_obscure),
+                                  icon: Icon(
+                                    _obscure
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                    color: AppColors.textMuted,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                              validator: (v) => v == null || v.length < 8
+                                  ? 'Min 8 characters'
+                                  : null,
+                            ).animate().fadeIn(delay: 500.ms),
+
+                            const SizedBox(height: 20),
+
+                            // Terms
+                            GestureDetector(
+                              onTap: () => setState(() => _agreed = !_agreed),
                               child: Row(
                                 children: [
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () => setState(() => _selectedRole = 'volunteer'),
-                                      child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 200),
-                                        decoration: BoxDecoration(
-                                          color: _selectedRole == 'volunteer'
-                                              ? AppColors.primary
-                                              : Colors.transparent,
-                                          borderRadius: BorderRadius.circular(9),
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          'Volunteer',
-                                          style: TextStyle(
-                                            color: _selectedRole == 'volunteer'
-                                                ? Colors.white
-                                                : AppColors.textSecondary,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14,
-                                          ),
-                                        ),
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 150),
+                                    width: 20,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      color: _agreed
+                                          ? AppColors.primary
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(5),
+                                      border: Border.all(
+                                        color: _agreed
+                                            ? AppColors.primary
+                                            : AppColors.border,
+                                        width: 1.5,
                                       ),
                                     ),
+                                    child: _agreed
+                                        ? const Icon(Icons.check_rounded,
+                                            size: 13, color: Colors.white)
+                                        : null,
                                   ),
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () => setState(() => _selectedRole = 'organizer'),
-                                      child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 200),
-                                        decoration: BoxDecoration(
-                                          color: _selectedRole == 'organizer'
-                                              ? AppColors.primary
-                                              : Colors.transparent,
-                                          borderRadius: BorderRadius.circular(9),
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          'Organizer',
-                                          style: TextStyle(
-                                            color: _selectedRole == 'organizer'
-                                                ? Colors.white
-                                                : AppColors.textSecondary,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ),
+                                  const SizedBox(width: 10),
+                                  const Expanded(
+                                    child: Text(
+                                      'I agree to the Terms of Service and Privacy Policy',
+                                      style: TextStyle(
+                                          color: AppColors.textMuted,
+                                          fontSize: 13),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ).animate().fadeIn(delay: 380.ms),
+                            ).animate().fadeIn(delay: 550.ms),
 
-                        const SizedBox(height: 14),
+                            const SizedBox(height: 24),
 
-                        TextFormField(
-                          key: const Key('register_org_field'),
-                          controller: _orgCtrl,
-                          style: const TextStyle(color: AppColors.textPrimary),
-                          decoration: const InputDecoration(
-                            labelText: 'Organization',
-                            prefixIcon: Icon(Icons.business_outlined,
-                                color: AppColors.textMuted, size: 20),
-                          ),
-                          validator: (v) => v == null || v.trim().isEmpty
-                              ? 'Enter your organization'
-                              : null,
-                        ).animate().fadeIn(delay: 400.ms),
+                            GradientButton(
+                              key: const Key('register_submit_button'),
+                              label: 'Create Account',
+                              onPressed: _submit,
+                              isLoading: auth.status == AuthStatus.loading,
+                              width: double.infinity,
+                              icon: Icons.rocket_launch_rounded,
+                            ).animate().fadeIn(delay: 600.ms),
 
-                        const SizedBox(height: 14),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Expanded(
+                                    child: Divider(
+                                        color:
+                                            AppColors.border.withOpacity(0.5),
+                                        thickness: 1)),
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 16),
+                                  child: Text('OR',
+                                      style: TextStyle(
+                                          color: AppColors.textMuted,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.5)),
+                                ),
+                                Expanded(
+                                    child: Divider(
+                                        color:
+                                            AppColors.border.withOpacity(0.5),
+                                        thickness: 1)),
+                              ],
+                            ).animate().fadeIn(delay: 650.ms),
+                            const SizedBox(height: 20),
 
-                        TextFormField(
-                          key: const Key('register_email_field'),
-                          controller: _emailCtrl,
-                          keyboardType: TextInputType.emailAddress,
-                          style: const TextStyle(color: AppColors.textPrimary),
-                          decoration: const InputDecoration(
-                            labelText: 'Work Email',
-                            prefixIcon: Icon(Icons.mail_outline_rounded,
-                                color: AppColors.textMuted, size: 20),
-                          ),
-                          validator: (v) => v == null || !v.contains('@')
-                              ? 'Enter a valid email'
-                              : null,
-                        ).animate().fadeIn(delay: 450.ms),
-
-                        const SizedBox(height: 14),
-
-                        TextFormField(
-                          key: const Key('register_password_field'),
-                          controller: _passCtrl,
-                          obscureText: _obscure,
-                          style: const TextStyle(color: AppColors.textPrimary),
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            prefixIcon: const Icon(Icons.lock_outline_rounded,
-                                color: AppColors.textMuted, size: 20),
-                            suffixIcon: IconButton(
-                              onPressed: () =>
-                                  setState(() => _obscure = !_obscure),
-                              icon: Icon(
-                                _obscure
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                                color: AppColors.textMuted,
-                                size: 20,
+                            OutlinedButton(
+                              key: const Key('google_signup_button'),
+                              onPressed: auth.status == AuthStatus.loading
+                                  ? null
+                                  : () async {
+                                      await auth.signInWithGoogle();
+                                    },
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(double.infinity, 48),
+                                side: BorderSide(
+                                    color: AppColors.border.withOpacity(0.8)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                backgroundColor: AppColors.surfaceElevated,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                               ),
-                            ),
-                          ),
-                          validator: (v) => v == null || v.length < 8
-                              ? 'Min 8 characters'
-                              : null,
-                        ).animate().fadeIn(delay: 500.ms),
-
-                        const SizedBox(height: 20),
-
-                        // Terms
-                        GestureDetector(
-                          onTap: () => setState(() => _agreed = !_agreed),
-                          child: Row(
-                            children: [
-                              AnimatedContainer(
-                                duration: const Duration(milliseconds: 150),
-                                width: 20,
-                                height: 20,
-                                decoration: BoxDecoration(
-                                  color: _agreed
-                                      ? AppColors.primary
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                    color: _agreed
-                                        ? AppColors.primary
-                                        : AppColors.border,
-                                    width: 1.5,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    width: 18,
+                                    height: 18,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: const Text(
+                                      'G',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 11,
+                                        fontFamily: 'sans-serif',
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                child: _agreed
-                                    ? const Icon(Icons.check_rounded,
-                                        size: 13, color: Colors.white)
-                                    : null,
-                              ),
-                              const SizedBox(width: 10),
-                              const Expanded(
-                                child: Text(
-                                  'I agree to the Terms of Service and Privacy Policy',
-                                  style: TextStyle(
-                                      color: AppColors.textMuted, fontSize: 13),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ).animate().fadeIn(delay: 550.ms),
-
-                        const SizedBox(height: 24),
-
-                        GradientButton(
-                          key: const Key('register_submit_button'),
-                          label: 'Create Account',
-                          onPressed: _submit,
-                          isLoading: auth.status == AuthStatus.loading,
-                          width: double.infinity,
-                          icon: Icons.rocket_launch_rounded,
-                        ).animate().fadeIn(delay: 600.ms),
-
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Expanded(child: Divider(color: AppColors.border.withOpacity(0.5), thickness: 1)),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              child: Text('OR', style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
-                            ),
-                            Expanded(child: Divider(color: AppColors.border.withOpacity(0.5), thickness: 1)),
-                          ],
-                        ).animate().fadeIn(delay: 650.ms),
-                        const SizedBox(height: 20),
-
-                        OutlinedButton(
-                          key: const Key('google_signup_button'),
-                          onPressed: () async {
-                            await auth.signInWithGoogle();
-                          },
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(double.infinity, 48),
-                            side: BorderSide(color: AppColors.border.withOpacity(0.8)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            backgroundColor: AppColors.surfaceElevated,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                width: 18,
-                                height: 18,
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                ),
-                                alignment: Alignment.center,
-                                child: const Text(
-                                  'G',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 11,
-                                    fontFamily: 'sans-serif',
+                                  const SizedBox(width: 12),
+                                  const Text(
+                                    'Continue with Google',
+                                    style: TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
-                              const SizedBox(width: 12),
-                              const Text(
-                                  'Continue with Google',
-                                style: TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ).animate().fadeIn(delay: 700.ms),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('Already have an account? ',
-                          style: TextStyle(
-                              color: AppColors.textMuted, fontSize: 14)),
-                      GestureDetector(
-                        onTap: () => context.go(AppRouter.login),
-                        child: const Text('Sign in',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                            )),
+                            ).animate().fadeIn(delay: 700.ms),
+                          ],
+                        ),
                       ),
+                      const SizedBox(height: 28),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('Already have an account? ',
+                              style: TextStyle(
+                                  color: AppColors.textMuted, fontSize: 14)),
+                          GestureDetector(
+                            onTap: () => context.go(AppRouter.login),
+                            child: const Text('Sign in',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                )),
+                          ),
+                        ],
+                      ).animate().fadeIn(delay: 650.ms),
+                      const SizedBox(height: 32),
                     ],
-                  ).animate().fadeIn(delay: 650.ms),
-                  const SizedBox(height: 32),
-                ],
+                  ),
+                ),
               ),
             ),
           ),

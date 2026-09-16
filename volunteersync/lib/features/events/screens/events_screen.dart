@@ -29,6 +29,27 @@ class _EventsScreenState extends State<EventsScreen> {
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<EventsProvider>();
+    final auth = context.watch<AuthProvider>();
+    final user = auth.user;
+    final isVolunteer = user?.role == 'volunteer';
+    
+    final categoryMap = {
+      'Food Donation': 'Food Donor',
+      'Blood Donation': 'Blood Donor',
+      'Medical Assistance': 'Medical Volunteer',
+      'Transportation': 'Driver / Transportation',
+      'Clothing Donation': 'Clothing Donor',
+      'Fundraising': 'Fundraiser',
+      'General Volunteering': 'General Volunteer',
+    };
+
+    final displayEvents = isVolunteer
+        ? prov.events.where((e) {
+            final userCategory = user?.category ?? 'General Volunteer';
+            final requiredVolunteerCategory = categoryMap[e.category] ?? '';
+            return userCategory.toLowerCase() == requiredVolunteerCategory.toLowerCase();
+          }).toList()
+        : prov.events.where((e) => e.organizer.toLowerCase() == (user?.name ?? '').toLowerCase()).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -57,11 +78,12 @@ class _EventsScreenState extends State<EventsScreen> {
                         ],
                       ),
                     ),
-                    GradientButton(
-                      label: 'New Activity',
-                      onPressed: () => _showAddDialog(context),
-                      icon: Icons.add_rounded,
-                    ),
+                    if (!isVolunteer)
+                      GradientButton(
+                        label: 'New Activity',
+                        onPressed: () => _showAddDialog(context),
+                        icon: Icons.add_rounded,
+                      ),
                   ],
                 ).animate().fadeIn(delay: 100.ms),
                 const SizedBox(height: 16),
@@ -82,21 +104,23 @@ class _EventsScreenState extends State<EventsScreen> {
           Expanded(
             child: prov.isLoading
                 ? _buildShimmer()
-                : prov.events.isEmpty
-                    ? const EmptyState(
+                : displayEvents.isEmpty
+                    ? EmptyState(
                         icon: Icons.event_busy_rounded,
                         title: 'No activities found',
-                        subtitle: 'Create your first activity to get started',
-                        actionLabel: 'Create Activity',
+                        subtitle: isVolunteer
+                            ? 'No activities are available right now'
+                            : 'Create your first activity to get started',
+                        actionLabel: isVolunteer ? null : 'Create Activity',
                       )
                     : ListView.separated(
                         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                        itemCount: prov.events.length,
+                        itemCount: displayEvents.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 12),
                         itemBuilder: (ctx, i) => _EventCard(
-                          event: prov.events[i],
+                          event: displayEvents[i],
                           index: i,
-                          onTap: () => _showDetail(ctx, prov.events[i]),
+                          onTap: () => _showDetail(ctx, displayEvents[i]),
                         ),
                       ),
           ),
@@ -144,7 +168,7 @@ class _AddEventDialogState extends State<_AddEventDialog> {
   final _descCtrl = TextEditingController();
   final _targetCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  String _category = 'Education';
+  String _category = 'General Volunteering';
   DateTime _startDate = DateTime.now().add(const Duration(days: 1));
   DateTime _endDate = DateTime.now().add(const Duration(days: 2));
 
@@ -263,13 +287,14 @@ class _AddEventDialogState extends State<_AddEventDialog> {
                 dropdownColor: AppColors.surface,
                 style: const TextStyle(color: AppColors.textPrimary),
                 decoration: const InputDecoration(labelText: 'Category'),
-                items: [
-                  'Education',
-                  'Food Security',
-                  'Environment',
-                  'Health & Wellness',
-                  'Housing',
-                  'Digital Inclusion',
+                items: const [
+                  'Food Donation',
+                  'Blood Donation',
+                  'Medical Assistance',
+                  'Transportation',
+                  'Clothing Donation',
+                  'Fundraising',
+                  'General Volunteering',
                 ]
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),
@@ -378,6 +403,262 @@ class _AddEventDialogState extends State<_AddEventDialog> {
   }
 }
 
+class _EditEventDialog extends StatefulWidget {
+  final Event event;
+  const _EditEventDialog({required this.event});
+
+  @override
+  State<_EditEventDialog> createState() => _EditEventDialogState();
+}
+
+class _EditEventDialogState extends State<_EditEventDialog> {
+  final _titleCtrl = TextEditingController();
+  final _locationCtrl = TextEditingController();
+  final _organizerCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+  final _targetCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  late String _category;
+  late DateTime _startDate;
+  late DateTime _endDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleCtrl.text = widget.event.title;
+    _locationCtrl.text = widget.event.location;
+    _organizerCtrl.text = widget.event.organizer;
+    _descCtrl.text = widget.event.description;
+    _targetCtrl.text = widget.event.targetVolunteers.toString();
+    _category = widget.event.category;
+    _startDate = widget.event.startDate;
+    _endDate = widget.event.endDate;
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _locationCtrl.dispose();
+    _organizerCtrl.dispose();
+    _descCtrl.dispose();
+    _targetCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickStartDateTime() async {
+    final d = await showDatePicker(
+      context: context,
+      initialDate: _startDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (d == null) return;
+    if (!mounted) return;
+    final t = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_startDate),
+    );
+    if (t == null) return;
+    setState(() {
+      _startDate = DateTime(d.year, d.month, d.day, t.hour, t.minute);
+    });
+  }
+
+  Future<void> _pickEndDateTime() async {
+    final d = await showDatePicker(
+      context: context,
+      initialDate: _endDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (d == null) return;
+    if (!mounted) return;
+    final t = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_endDate),
+    );
+    if (t == null) return;
+    setState(() {
+      _endDate = DateTime(d.year, d.month, d.day, t.hour, t.minute);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Edit Activity',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  )),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _titleCtrl,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: const InputDecoration(labelText: 'Activity Title'),
+                validator: (v) => v?.isEmpty == true ? 'Required' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _locationCtrl,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: const InputDecoration(labelText: 'Location'),
+                validator: (v) => v?.isEmpty == true ? 'Required' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _organizerCtrl,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: const InputDecoration(labelText: 'Organizer'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _descCtrl,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: const InputDecoration(labelText: 'Description'),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _targetCtrl,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration:
+                    const InputDecoration(labelText: 'Target Volunteers'),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _category,
+                dropdownColor: AppColors.surface,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: const InputDecoration(labelText: 'Category'),
+                items: const [
+                  'Food Donation',
+                  'Blood Donation',
+                  'Medical Assistance',
+                  'Transportation',
+                  'Clothing Donation',
+                  'Fundraising',
+                  'General Volunteering',
+                ]
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (v) => setState(() => _category = v!),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: _pickStartDateTime,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Start Date & Time',
+                                style: TextStyle(
+                                    color: AppColors.textMuted, fontSize: 11)),
+                            const SizedBox(height: 4),
+                            Text(AppUtils.formatDateTime(_startDate),
+                                style: const TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: _pickEndDateTime,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('End Date & Time',
+                                style: TextStyle(
+                                    color: AppColors.textMuted, fontSize: 11)),
+                            const SizedBox(height: 4),
+                            Text(AppUtils.formatDateTime(_endDate),
+                                style: const TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(color: AppColors.border),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel',
+                        style: TextStyle(color: AppColors.textMuted)),
+                  ),
+                  const SizedBox(width: 12),
+                  GradientButton(
+                    label: 'Save',
+                    onPressed: () async {
+                      if (_formKey.currentState!.validate()) {
+                        final updatedEvent = Event(
+                          id: widget.event.id,
+                          title: _titleCtrl.text.trim(),
+                          description: _descCtrl.text.trim(),
+                          location: _locationCtrl.text.trim(),
+                          startDate: _startDate,
+                          endDate: _endDate,
+                          status: widget.event.status,
+                          category: _category,
+                          targetVolunteers: int.tryParse(_targetCtrl.text) ?? 0,
+                          registeredVolunteers: widget.event.registeredVolunteers,
+                          attendedVolunteers: widget.event.attendedVolunteers,
+                          organizer: _organizerCtrl.text.trim(),
+                          volunteerIds: widget.event.volunteerIds,
+                          imageUrl: widget.event.imageUrl,
+                          tags: widget.event.tags,
+                        );
+                        await context.read<EventsProvider>().updateEvent(updatedEvent);
+                        if (context.mounted) {
+                          Navigator.pop(context, true);
+                          AppUtils.showSnackBar(
+                              context, 'Activity updated successfully!');
+                        }
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _EventCard extends StatelessWidget {
   final Event event;
   final int index;
@@ -390,14 +671,36 @@ class _EventCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusColor = AppUtils.colorFromStatus(event.status);
     final categoryColors = {
-      'Food Security': AppColors.accent3,
-      'Education': AppColors.primary,
-      'Environment': AppColors.accent2,
-      'Digital Inclusion': AppColors.accent1,
-      'Housing': AppColors.secondary,
-      'Health & Wellness': AppColors.accent5,
+      'Food Donation': AppColors.accent3,
+      'Blood Donation': AppColors.accent4,
+      'Medical Assistance': AppColors.accent5,
+      'Transportation': AppColors.primary,
+      'Clothing Donation': AppColors.secondary,
+      'Fundraising': AppColors.accent1,
+      'General Volunteering': AppColors.accent2,
     };
     final catColor = categoryColors[event.category] ?? AppColors.primary;
+
+    String getCardLabel(String category) {
+      switch (category) {
+        case 'Food Donation':
+          return 'Food Donation Required';
+        case 'Blood Donation':
+          return 'Blood Donor Required';
+        case 'Medical Assistance':
+          return 'Medical Volunteer Required';
+        case 'Transportation':
+          return 'Transportation Required';
+        case 'Clothing Donation':
+          return 'Clothing Donation Required';
+        case 'Fundraising':
+          return 'Fundraising Required';
+        case 'General Volunteering':
+          return 'General Volunteer Required';
+        default:
+          return '$category Required';
+      }
+    }
 
     return GestureDetector(
       onTap: onTap,
@@ -433,8 +736,19 @@ class _EventCard extends StatelessWidget {
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           )),
-                      Text(event.category,
-                          style: TextStyle(color: catColor, fontSize: 11)),
+                      const SizedBox(height: 2),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: catColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: catColor.withOpacity(0.2), width: 0.8),
+                        ),
+                        child: Text(
+                          getCardLabel(event.category),
+                          style: TextStyle(color: catColor, fontSize: 10, fontWeight: FontWeight.w700),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -534,6 +848,8 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
   String _status = 'loading';
   bool _isSubmitting = false;
   List<Map<String, dynamic>> _participants = [];
+  Map<String, String> _participantCategories = {};
+  String _filterCategory = 'All';
 
   @override
   void initState() {
@@ -566,8 +882,27 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
             .select()
             .eq('event_id', widget.event.id);
 
+        final participantIds = res.map((p) => p['volunteer_id'] as String).toList();
+        Map<String, String> volunteerCategories = {};
+        if (participantIds.isNotEmpty) {
+          try {
+            final volRes = await _supabase
+                .from('volunteers')
+                .select('id, availability')
+                .inFilter('id', participantIds);
+            for (var v in volRes) {
+              if (v['id'] != null && v['availability'] != null) {
+                volunteerCategories[v['id'] as String] = v['availability'] as String;
+              }
+            }
+          } catch (e) {
+            debugPrint('Error fetching participant categories: $e');
+          }
+        }
+
         setState(() {
           _participants = List<Map<String, dynamic>>.from(res);
+          _participantCategories = volunteerCategories;
           _status = 'organizer';
         });
       }
@@ -583,6 +918,29 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
     final auth = context.read<AuthProvider>();
     final user = auth.user;
     if (user == null) return;
+
+    final categoryMap = {
+      'Food Donation': 'Food Donor',
+      'Blood Donation': 'Blood Donor',
+      'Medical Assistance': 'Medical Volunteer',
+      'Transportation': 'Driver / Transportation',
+      'Clothing Donation': 'Clothing Donor',
+      'Fundraising': 'Fundraiser',
+      'General Volunteering': 'General Volunteer',
+    };
+    final requiredVolunteerCategory = categoryMap[widget.event.category] ?? '';
+    final userCategory = user.category;
+
+    if (userCategory.toLowerCase() != 'general volunteer' &&
+        userCategory.toLowerCase() != requiredVolunteerCategory.toLowerCase()) {
+      if (mounted) {
+        AppUtils.showSnackBar(
+          context,
+          'Validation failed: You can only register for events matching your category ($requiredVolunteerCategory).',
+        );
+      }
+      return;
+    }
 
     setState(() => _isSubmitting = true);
     try {
@@ -775,7 +1133,26 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
     final statusColor = AppUtils.colorFromStatus(widget.event.status);
     final auth = context.read<AuthProvider>();
     final isVolunteer = auth.user?.role == 'volunteer';
-    final isCreator = auth.user?.role == 'organizer' && widget.event.organizer == auth.user?.name;
+    final isCreator = auth.user?.role == 'organizer' && widget.event.organizer.toLowerCase() == (auth.user?.name ?? '').toLowerCase();
+
+    final categoryMap = {
+      'Food Donation': 'Food Donor',
+      'Blood Donation': 'Blood Donor',
+      'Medical Assistance': 'Medical Volunteer',
+      'Transportation': 'Driver / Transportation',
+      'Clothing Donation': 'Clothing Donor',
+      'Fundraising': 'Fundraiser',
+      'General Volunteering': 'General Volunteer',
+    };
+    final requiredVolunteerCategory = categoryMap[widget.event.category] ?? '';
+    final userCategory = auth.user?.category ?? 'General Volunteer';
+    final isCategoryMatched = userCategory.toLowerCase() == 'general volunteer' ||
+        userCategory.toLowerCase() == requiredVolunteerCategory.toLowerCase();
+
+    String getPluralCategoryName(String cat) {
+      if (cat == 'Driver / Transportation') return 'Drivers / Transportation Volunteers';
+      return '${cat}s';
+    }
 
     return DraggableScrollableSheet(
       initialChildSize: 0.8,
@@ -827,6 +1204,58 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                       ],
                     ),
                     const SizedBox(height: 16),
+                    // Requirements Banner
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: isCategoryMatched
+                            ? AppColors.primary.withOpacity(0.08)
+                            : AppColors.accent4.withOpacity(0.08),
+                        border: Border.all(
+                          color: isCategoryMatched
+                              ? AppColors.primary.withOpacity(0.2)
+                              : AppColors.accent4.withOpacity(0.2),
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                isCategoryMatched
+                                    ? Icons.check_circle_outline_rounded
+                                    : Icons.warning_amber_rounded,
+                                color: isCategoryMatched ? AppColors.primaryLight : AppColors.accent4,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Requires: $requiredVolunteerCategory',
+                                  style: TextStyle(
+                                    color: isCategoryMatched ? AppColors.textPrimary : AppColors.accent4,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Your registered category: $userCategory',
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     Text(widget.event.description,
                         style: const TextStyle(
                             color: AppColors.textMuted,
@@ -905,14 +1334,36 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                       const SizedBox(height: 12),
                       if (_status == 'loading')
                         const Center(child: CircularProgressIndicator())
-                      else if (_status == 'none')
-                        GradientButton(
-                          label: 'Request to Join Activity',
-                          onPressed: _isSubmitting ? () {} : _requestToJoin,
-                          width: double.infinity,
-                          isLoading: _isSubmitting,
-                          icon: Icons.rocket_launch_rounded,
-                        )
+                      else if (_status == 'none') ...[
+                        if (isCategoryMatched)
+                          GradientButton(
+                            label: 'Register as $requiredVolunteerCategory',
+                            onPressed: _isSubmitting ? () {} : _requestToJoin,
+                            width: double.infinity,
+                            isLoading: _isSubmitting,
+                            icon: Icons.rocket_launch_rounded,
+                          )
+                        else
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceElevated,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.accent4.withOpacity(0.3)),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              'This event is currently accepting only ${getPluralCategoryName(requiredVolunteerCategory)}.',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: AppColors.accent4,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ]
                       else if (_status == 'requested')
                         Column(
                           children: [
@@ -1011,80 +1462,132 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                     // Organizer Panel
                     if (!isVolunteer) ...[
                       if (isCreator) ...[
-                        Row(
+                        Column(
                           children: [
                             if (widget.event.status != 'completed') ...[
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppColors.accent2,
-                                    side: const BorderSide(color: AppColors.accent2),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  ),
-                                  icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
-                                  label: const Text('Complete Activity'),
-                                  onPressed: () async {
-                                    final provider = context.read<EventsProvider>();
-                                    final navigator = Navigator.of(context);
-                                    final messenger = ScaffoldMessenger.of(context);
-                                    await provider.completeEvent(widget.event.id);
-                                    navigator.pop();
-                                    messenger.showSnackBar(
-                                      const SnackBar(content: Text('Activity marked as completed!')),
-                                    );
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                            ],
-                            Expanded(
-                              child: OutlinedButton.icon(
+                              OutlinedButton.icon(
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.accent4,
-                                  side: const BorderSide(color: AppColors.accent4),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  foregroundColor: AppColors.accent2,
+                                  side: const BorderSide(color: AppColors.accent2),
+                                  minimumSize: const Size(double.infinity, 44),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                 ),
-                                icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                                label: const Text('Delete Activity'),
+                                icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                                label: const Text('Complete Activity'),
                                 onPressed: () async {
                                   final provider = context.read<EventsProvider>();
                                   final navigator = Navigator.of(context);
                                   final messenger = ScaffoldMessenger.of(context);
-                                  final confirm = await showDialog<bool>(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      backgroundColor: AppColors.surface,
-                                      title: const Text('Delete Activity', style: TextStyle(color: AppColors.textPrimary)),
-                                      content: Text('Are you sure you want to delete "${widget.event.title}"?', style: const TextStyle(color: AppColors.textSecondary)),
-                                      actions: [
-                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
-                                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: AppColors.accent4))),
-                                      ],
-                                    ),
+                                  await provider.completeEvent(widget.event.id);
+                                  navigator.pop();
+                                  messenger.showSnackBar(
+                                    const SnackBar(content: Text('Activity marked as completed!')),
                                   );
-                                  if (confirm == true) {
-                                    await provider.deleteEvent(widget.event.id);
-                                    navigator.pop();
-                                    messenger.showSnackBar(
-                                      const SnackBar(content: Text('Activity deleted successfully!')),
-                                    );
-                                  }
                                 },
                               ),
+                              const SizedBox(height: 12),
+                            ],
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.primaryLight,
+                                      side: const BorderSide(color: AppColors.primaryLight),
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                    icon: const Icon(Icons.edit_outlined, size: 18),
+                                    label: const Text('Edit Activity'),
+                                    onPressed: () async {
+                                      final navigator = Navigator.of(context);
+                                      final updated = await showDialog<bool>(
+                                        context: context,
+                                        builder: (_) => _EditEventDialog(event: widget.event),
+                                      );
+                                      if (updated == true) {
+                                        navigator.pop();
+                                      }
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.accent4,
+                                      side: const BorderSide(color: AppColors.accent4),
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                                    label: const Text('Delete Activity'),
+                                    onPressed: () async {
+                                      final provider = context.read<EventsProvider>();
+                                      final navigator = Navigator.of(context);
+                                      final messenger = ScaffoldMessenger.of(context);
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          backgroundColor: AppColors.surface,
+                                          title: const Text('Delete Activity', style: TextStyle(color: AppColors.textPrimary)),
+                                          content: Text('Are you sure you want to delete "${widget.event.title}"?', style: const TextStyle(color: AppColors.textSecondary)),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted))),
+                                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: AppColors.accent4))),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true) {
+                                        await provider.deleteEvent(widget.event.id);
+                                        navigator.pop();
+                                        messenger.showSnackBar(
+                                          const SnackBar(content: Text('Activity deleted successfully!')),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                         const SizedBox(height: 20),
                       ],
-                      const Text(
-                        'Participants & Join Requests',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Participants & Join Requests',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          DropdownButton<String>(
+                            value: _filterCategory,
+                            dropdownColor: AppColors.surface,
+                            icon: const Icon(Icons.filter_list_rounded, size: 16, color: AppColors.primaryLight),
+                            style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
+                            underline: const SizedBox(),
+                            items: const [
+                              DropdownMenuItem(value: 'All', child: Text('All Specializations')),
+                              DropdownMenuItem(value: 'Food Donor', child: Text('Food Donors')),
+                              DropdownMenuItem(value: 'Blood Donor', child: Text('Blood Donors')),
+                              DropdownMenuItem(value: 'Medical Volunteer', child: Text('Medical Volunteers')),
+                              DropdownMenuItem(value: 'Driver / Transportation', child: Text('Drivers')),
+                              DropdownMenuItem(value: 'Clothing Donor', child: Text('Clothing Donors')),
+                              DropdownMenuItem(value: 'Fundraiser', child: Text('Fundraisers')),
+                              DropdownMenuItem(value: 'General Volunteer', child: Text('General Volunteers')),
+                            ],
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(() => _filterCategory = v);
+                              }
+                            },
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       if (_status == 'loading')
@@ -1099,85 +1602,131 @@ class _EventDetailSheetState extends State<_EventDetailSheet> {
                             ),
                           ),
                         )
-                      else
-                        ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _participants.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
-                          itemBuilder: (ctx, i) {
-                            final p = _participants[i];
-                            final statusStr = p['status'] ?? 'joined';
+                      else ...[
+                        () {
+                          final filtered = _filterCategory == 'All'
+                              ? _participants
+                              : _participants.where((p) {
+                                  final cat = _participantCategories[p['volunteer_id']] ?? 'General Volunteer';
+                                  return cat.toLowerCase() == _filterCategory.toLowerCase();
+                                }).toList();
 
-                            return Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceElevated,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.border),
-                              ),
-                              child: Row(
-                                children: [
-                                  AppAvatar(name: p['volunteer_name'] ?? 'U', radius: 18),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          p['volunteer_name'] ?? 'Volunteer',
-                                          style: const TextStyle(
-                                            color: AppColors.textPrimary,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          statusStr == 'present'
-                                              ? 'PARTICIPATED'
-                                              : statusStr == 'absent'
-                                                  ? 'NOT PARTICIPATED'
-                                                  : statusStr.toString().toUpperCase(),
-                                          style: TextStyle(
-                                            color: _statusColor(statusStr),
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (statusStr == 'requested') ...[
-                                    IconButton(
-                                      icon: const Icon(Icons.check_circle_rounded, color: AppColors.accent2, size: 22),
-                                      onPressed: () => _approveRequest(p),
-                                      tooltip: 'Approve Request',
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.cancel_rounded, color: AppColors.accent4, size: 22),
-                                      onPressed: () => _declineRequest(p),
-                                      tooltip: 'Decline Request',
-                                    ),
-                                  ] else if (statusStr == 'joined') ...[
-                                    PopupMenuButton<String>(
-                                      icon: const Icon(Icons.check_box_outlined, color: AppColors.primaryLight, size: 20),
-                                      onSelected: (val) => _markAttendance(p, val),
-                                      color: AppColors.surface,
-                                      itemBuilder: (_) => [
-                                        const PopupMenuItem(value: 'present', child: Text('Participated', style: TextStyle(color: AppColors.textPrimary))),
-                                        const PopupMenuItem(value: 'absent', child: Text('Not Participated', style: TextStyle(color: AppColors.textPrimary))),
-                                      ],
-                                      tooltip: 'Mark Attendance',
-                                    ),
-                                  ] else ...[
-                                    Icon(_statusIcon(statusStr), color: _statusColor(statusStr), size: 20),
-                                  ],
-                                ],
+                          if (filtered.isEmpty) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20),
+                              child: Center(
+                                child: Text(
+                                  'No participants match this category.',
+                                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                                ),
                               ),
                             );
-                          },
-                        ),
+                          }
+
+                          return ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 10),
+                            itemBuilder: (ctx, idx) {
+                              final p = filtered[idx];
+                              final statusStr = p['status'] ?? 'joined';
+                              final volunteerCat = _participantCategories[p['volunteer_id']] ?? 'General Volunteer';
+
+                              return Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceElevated,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Row(
+                                  children: [
+                                    AppAvatar(name: p['volunteer_name'] ?? 'U', radius: 18),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  p['volunteer_name'] ?? 'Volunteer',
+                                                  style: const TextStyle(
+                                                    color: AppColors.textPrimary,
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.primary.withOpacity(0.12),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  volunteerCat,
+                                                  style: const TextStyle(
+                                                    color: AppColors.primaryLight,
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            statusStr == 'present'
+                                                ? 'PARTICIPATED'
+                                                : statusStr == 'absent'
+                                                    ? 'NOT PARTICIPATED'
+                                                    : statusStr.toString().toUpperCase(),
+                                            style: TextStyle(
+                                              color: _statusColor(statusStr),
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (statusStr == 'requested') ...[
+                                      IconButton(
+                                        icon: const Icon(Icons.check_circle_rounded, color: AppColors.accent2, size: 22),
+                                        onPressed: () => _approveRequest(p),
+                                        tooltip: 'Approve Request',
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.cancel_rounded, color: AppColors.accent4, size: 22),
+                                        onPressed: () => _declineRequest(p),
+                                        tooltip: 'Decline Request',
+                                      ),
+                                    ] else if (statusStr == 'joined') ...[
+                                      PopupMenuButton<String>(
+                                        icon: const Icon(Icons.check_box_outlined, color: AppColors.primaryLight, size: 20),
+                                        onSelected: (val) => _markAttendance(p, val),
+                                        color: AppColors.surface,
+                                        itemBuilder: (_) => [
+                                          const PopupMenuItem(value: 'present', child: Text('Participated', style: TextStyle(color: AppColors.textPrimary))),
+                                          const PopupMenuItem(value: 'absent', child: Text('Not Participated', style: TextStyle(color: AppColors.textPrimary))),
+                                        ],
+                                        tooltip: 'Mark Attendance',
+                                      ),
+                                    ] else ...[
+                                      Icon(_statusIcon(statusStr), color: _statusColor(statusStr), size: 20),
+                                    ],
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        }(),
+                      ],
                     ],
                     const SizedBox(height: 24),
                   ],

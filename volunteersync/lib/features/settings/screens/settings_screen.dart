@@ -132,6 +132,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _InfoRow('Email', user?.email ?? ''),
                   _InfoRow('Role', user?.role ?? 'admin'),
                   _InfoRow(
+                      'Category', user?.category ?? 'General Volunteer'),
+                  _InfoRow(
                       'Organization', user?.organization ?? 'VolunteerSync'),
                 ],
               ),
@@ -224,6 +226,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Eastern Time (ET)',
                   ],
                   onChanged: (v) => setState(() => _timezone = v),
+                ),
+                _DropdownTile(
+                  icon: Icons.category_rounded,
+                  label: 'Volunteer Category',
+                  value: user?.category ?? 'General Volunteer',
+                  options: const [
+                    'Food Donor',
+                    'Blood Donor',
+                    'Medical Volunteer',
+                    'Driver / Transportation',
+                    'Clothing Donor',
+                    'Fundraiser',
+                    'General Volunteer',
+                  ],
+                  onChanged: (v) async {
+                    final auth = context.read<AuthProvider>();
+                    final success = await auth.updateCategory(v);
+                    if (mounted) {
+                      AppUtils.showSnackBar(
+                        context,
+                        success
+                            ? 'Volunteer category updated to $v!'
+                            : 'Failed to update category.',
+                      );
+                    }
+                  },
                 ),
               ],
             ),
@@ -502,7 +530,11 @@ class _DropdownTile extends StatelessWidget {
         ),
         DropdownButtonHideUnderline(
           child: DropdownButton<String>(
-            value: value,
+            value: options.contains(value)
+                ? value
+                : (options.contains('General Volunteer')
+                    ? 'General Volunteer'
+                    : options.first),
             dropdownColor: AppColors.surfaceElevated,
             style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
             icon: const Icon(Icons.expand_more_rounded,

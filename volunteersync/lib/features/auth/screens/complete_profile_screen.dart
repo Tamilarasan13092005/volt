@@ -19,7 +19,43 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   final _orgCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   String _selectedRole = 'volunteer';
+  String _selectedCategory = 'General Volunteer';
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      if (auth.justSignedIn) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Text(
+                  'Sign in is completed',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        auth.clearJustSignedIn();
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -32,7 +68,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     setState(() => _isSubmitting = true);
     
     final auth = context.read<AuthProvider>();
-    final ok = await auth.completeProfile(_orgCtrl.text.trim(), _selectedRole);
+    final ok = await auth.completeProfile(_orgCtrl.text.trim(), _selectedRole, _selectedCategory);
     
     if (mounted) {
       setState(() => _isSubmitting = false);
@@ -190,6 +226,38 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                               ],
                             ),
                           ).animate().fadeIn(delay: 350.ms),
+                          const SizedBox(height: 20),
+
+                          // Category selection
+                          const Text(
+                            'Volunteer / Contribution Category',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            key: const Key('complete_profile_category_field'),
+                            value: _selectedCategory,
+                            dropdownColor: AppColors.surfaceElevated,
+                            style: const TextStyle(color: AppColors.textPrimary),
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.category_outlined,
+                                  color: AppColors.textMuted, size: 20),
+                            ),
+                            items: const [
+                              DropdownMenuItem(value: 'Food Donor', child: Text('Food Donor')),
+                              DropdownMenuItem(value: 'Blood Donor', child: Text('Blood Donor')),
+                              DropdownMenuItem(value: 'Medical Volunteer', child: Text('Medical Volunteer')),
+                              DropdownMenuItem(value: 'Driver / Transportation', child: Text('Driver / Transportation')),
+                              DropdownMenuItem(value: 'Clothing Donor', child: Text('Clothing Donor')),
+                              DropdownMenuItem(value: 'Fundraiser', child: Text('Fundraiser')),
+                              DropdownMenuItem(value: 'General Volunteer', child: Text('General Volunteer')),
+                            ],
+                            onChanged: (v) => setState(() => _selectedCategory = v!),
+                          ).animate().fadeIn(delay: 380.ms),
                           const SizedBox(height: 20),
 
                           // Organization

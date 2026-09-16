@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user.dart';
 
 class DashboardProvider extends ChangeNotifier {
+  bool _disposed = false;
   DashboardStats? _stats;
   bool _isLoading = false;
   String? _error;
@@ -65,7 +66,8 @@ class DashboardProvider extends ChangeNotifier {
           table: 'volunteers',
           callback: onDbChange,
         )
-        .subscribe((status, [error]) {
+        .subscribe((status, error) {
+      if (_disposed) return;
       _isRealtimeConnected = status == RealtimeSubscribeStatus.subscribed;
       notifyListeners();
     });
@@ -111,6 +113,7 @@ class DashboardProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _unsubscribeRealtime();
     super.dispose();
   }
@@ -120,7 +123,7 @@ class DashboardProvider extends ChangeNotifier {
   Future<void> loadDashboard() async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    if (!_disposed) notifyListeners();
 
     try {
       final now = DateTime.now();
@@ -178,7 +181,7 @@ class DashboardProvider extends ChangeNotifier {
         _weeklyAttendance = [];
 
         _isLoading = false;
-        notifyListeners();
+        if (!_disposed) notifyListeners();
         return;
       }
 
@@ -333,7 +336,7 @@ class DashboardProvider extends ChangeNotifier {
     }
 
     _isLoading = false;
-    notifyListeners();
+    if (!_disposed) notifyListeners();
   }
 
   // ── Chart Builders ─────────────────────────────────────────────────────────

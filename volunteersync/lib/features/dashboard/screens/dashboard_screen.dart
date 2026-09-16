@@ -29,6 +29,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
       _dashProvider.initRealtime(role: auth.user?.role, userId: auth.user?.id);
+      
+      if (auth.justSignedIn) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Text(
+                  'Sign in is completed',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        auth.clearJustSignedIn();
+      }
     });
   }
 
@@ -223,14 +251,15 @@ class _MobileStatGrid extends StatelessWidget {
       mainAxisSpacing: 12,
       childAspectRatio: 0.8,
       children: [
-        StatCard(
-          label: isVolunteer ? 'Hours Logged' : AppStrings.totalVolunteers,
-          value: isVolunteer ? '${stats.hoursThisMonth} hrs' : stats.totalVolunteers.toString(),
-          change: isVolunteer ? 'Keep it up!' : '+${stats.volunteerGrowthPercent.toStringAsFixed(1)}%',
-          icon: isVolunteer ? Icons.schedule_rounded : Icons.people_rounded,
-          gradient: AppColors.emeraldGradient,
-          animationDelay: 200,
-        ),
+        if (!isVolunteer)
+          StatCard(
+            label: AppStrings.totalVolunteers,
+            value: stats.totalVolunteers.toString(),
+            change: '+${stats.volunteerGrowthPercent.toStringAsFixed(1)}%',
+            icon: Icons.people_rounded,
+            gradient: AppColors.emeraldGradient,
+            animationDelay: 200,
+          ),
         StatCard(
           label: isVolunteer ? 'Joined Events' : AppStrings.activeEvents,
           value: isVolunteer ? stats.activeVolunteers.toString() : stats.upcomingEvents.toString(),
@@ -239,7 +268,7 @@ class _MobileStatGrid extends StatelessWidget {
           gradient: AppColors.cyanGradient,
           animationDelay: 300,
         ),
-        if (isVolunteer) ...[
+        if (isVolunteer)
           StatCard(
             label: 'Pending Requests',
             value: stats.totalVolunteers.toString(),
@@ -248,15 +277,6 @@ class _MobileStatGrid extends StatelessWidget {
             gradient: AppColors.amberGradient,
             animationDelay: 400,
           ),
-          StatCard(
-            label: 'My Attendance',
-            value: '${stats.attendanceRate.toStringAsFixed(1)}%',
-            change: 'Participation rate',
-            icon: Icons.fact_check_rounded,
-            gradient: AppColors.primaryGradient,
-            animationDelay: 500,
-          ),
-        ],
       ],
     );
   }
@@ -271,17 +291,19 @@ class _DesktopStatRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(
-          child: StatCard(
-            label: isVolunteer ? 'Hours Logged' : AppStrings.totalVolunteers,
-            value: isVolunteer ? '${stats.hoursThisMonth} hrs' : stats.totalVolunteers.toString(),
-            change: isVolunteer ? 'Keep it up!' : '+${stats.volunteerGrowthPercent.toStringAsFixed(1)}%',
-            icon: isVolunteer ? Icons.schedule_rounded : Icons.people_rounded,
-            gradient: AppColors.emeraldGradient,
-            animationDelay: 200,
+        if (!isVolunteer) ...[
+          Expanded(
+            child: StatCard(
+              label: AppStrings.totalVolunteers,
+              value: stats.totalVolunteers.toString(),
+              change: '+${stats.volunteerGrowthPercent.toStringAsFixed(1)}%',
+              icon: Icons.people_rounded,
+              gradient: AppColors.emeraldGradient,
+              animationDelay: 200,
+            ),
           ),
-        ),
-        const SizedBox(width: 16),
+          const SizedBox(width: 16),
+        ],
         Expanded(
           child: StatCard(
             label: isVolunteer ? 'Joined Events' : AppStrings.activeEvents,
@@ -302,17 +324,6 @@ class _DesktopStatRow extends StatelessWidget {
               icon: Icons.pending_actions_rounded,
               gradient: AppColors.amberGradient,
               animationDelay: 400,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: StatCard(
-              label: 'My Attendance',
-              value: '${stats.attendanceRate.toStringAsFixed(1)}%',
-              change: 'Participation rate',
-              icon: Icons.fact_check_rounded,
-              gradient: AppColors.primaryGradient,
-              animationDelay: 500,
             ),
           ),
         ],

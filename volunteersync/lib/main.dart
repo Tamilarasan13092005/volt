@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/dashboard_provider.dart';
@@ -9,11 +10,9 @@ import 'providers/volunteers_provider.dart';
 import 'providers/events_provider.dart';
 import 'providers/chat_provider.dart';
 import 'routes/app_router.dart';
-import 'package:flutter_web_plugins/url_strategy.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  usePathUrlStrategy();
 
   const supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
@@ -30,7 +29,6 @@ void main() async {
     publishableKey: supabaseAnonKey,
   );
 
-  // Lock to portrait on phones, allow all on tablets
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -38,7 +36,6 @@ void main() async {
     DeviceOrientation.landscapeRight,
   ]);
 
-  // Dark system UI overlay
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
